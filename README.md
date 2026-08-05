@@ -1,0 +1,153 @@
+# Elastic Stack on Kubernetes
+
+A minimal Kubernetes deployment of the Elastic Stack for APM:
+
+- **Elasticsearch 8.19** — StatefulSet (1 replica), PVC-backed storage
+- **Kibana 8.19** — Deployment
+- **APM Server 8.19** — Deployment, ingesting into Elasticsearch's built-in
+  APM integration
+
+All resources live in the `elastic-stack` namespace and are applied via
+[kustomize](https://kustomize.io/).
+
+## Components
+
+| Component       | Service          | Port | Type         |
+|-----------------|------------------|------|--------------|
+| Elasticsearch   | `elasticsearch`  | 9200 | LoadBalancer |
+| Kibana          | `kibana`         | 5601 | LoadBalancer |
+| APM Server      | `apm-server`     | 8200 | LoadBalancer |
+
+## Prerequisites
+
+- A Kubernetes cluster and `kubectl` configured
+- Cluster nodes with `vm.max_map_count >= 262144` (required by Elasticsearch):
+
+  ```sh
+  sudo sysctl -w vm.max_map_count=262144
+  ```
+
+  For a persistent setting, add `vm.max_map_count=262144` to `/etc/sysctl.conf`.
+
+## Deploy
+
+```sh
+kubectl apply -k .
+```
+
+Check rollout status:
+
+```sh
+kubectl rollout status statefulset/elasticsearch -n elastic-stack
+kubectl rollout status deployment/kibana -n elastic-stack
+kubectl rollout status deployment/apm-server -n elastic-stack
+```
+
+Get the external addresses:
+
+```sh
+kubectl get svc -n elastic-stack
+```
+
+## Scripts and Task runner
+
+Start, stop, or check the stack with the provided scripts or the
+[Taskfile](https://taskfile.dev):
+
+| Command                          | Action                                          |
+|----------------------------------|-------------------------------------------------|
+| `./start.sh` or `.\start.ps1`    | Deploy and wait for readiness, print endpoints  |
+| `./start.sh stop` or `.\start.ps1 -Action stop` | Remove the stack                 |
+| `./start.sh status` or `.\start.ps1 -Action status` | Show pods and services |
+| `task start` / `task stop` / `task status` / `task logs` | Task runner equivalents |
+| `task start:apps` | Build and deploy all demo apps |
+| `task start:apps:<name>` | Build and deploy one demo app, e.g. `task start:apps:java` |
+| `task test` | Run the Jest + Playwright test suite as a Kubernetes Job |
+
+Set `TIMEOUT` to adjust the rollout wait (default `300` seconds).
+
+## Access
+
+- **Kibana:** `http://<kibana-external-ip>:5601`
+- **Elasticsearch:** `http://<elasticsearch-external-ip>:9200`
+- **APM Server:** `http://<apm-server-external-ip>:8200`
+
+Point APM agents at the APM Server, e.g. for an Elastic APM agent:
+
+```
+server_url: http://<apm-server-external-ip>:8200
+service_name: <your-service-name>
+environment: development
+```
+
+## Built-in APM integration
+
+Since 8.15, Elasticsearch ships the `apm-data` plugin (enabled here via
+`xpack.apm_data.enabled: true` in
+`elasticsearch/00-configmap.yaml`), which installs the APM index templates
+and ingest pipelines inside Elasticsearch. The small `apm-server` Deployment
+is still required as the endpoint that APM agents report to; it writes
+directly into the APM data streams managed by Elasticsearch.
+
+The APM Server also serves the browser-based RUM agent (`apm-server.rum.enabled`
+in `apm-server/01-configmap.yaml`), so the React app's requests can be traced
+from the browser through the backend apps.
+
+## Tests
+
+A TypeScript test suite lives in `tests/` (Jest for API/integration checks,
+Playwright for browser checks). It is designed to run inside the cluster as
+a Kubernetes Job against the in-cluster services:
+
+```sh
+task test
+```
+
+This builds the `tests/` image, applies `tests/k8s.yaml` as the `apm-tests`
+Job in the `elastic-stack` namespace, waits for completion, and prints the
+logs. The suite asserts:
+
+- Elasticsearch, Kibana and APM Server are up and healthy
+- Every demo app serves its pages, `/slow` responses, and `/error` HTTP 500s
+- APM data (trace/error indices) is actually ingested into Elasticsearch
+- The Kibana UI loads and reports `available` status
+- The React (RUM) app proxies requests to the backend apps and produces
+  distributed traces shared between `react-app` and the backend services
+
+After a run, check results with:
+
+```sh
+kubectl get job/apm-tests -n elastic-stack
+kubectl logs job/apm-tests -n elastic-stack
+```
+
+All endpoints are configurable via environment variables (defaults are the
+in-cluster service DNS names, see `tests/src/config.ts`), so the suite can
+also run against exposed addresses:
+
+```sh
+ELASTICSEARCH_URL=http://localhost:9200 KIBANA_URL=http://localhost:5601 \
+JAVA_APP_URL=http://localhost:8080 ... npm test
+```
+
+Run locally (from `tests/`) with `npm install` (plus
+`npx playwright install chromium` for browser binaries), then
+`npm run typecheck`, `npm run test:unit`, or `npm run test:e2e`.
+
+## Cleanup
+
+```sh
+kubectl delete -k .
+```
+
+## Notes
+
+- This is a **development configuration**: `xpack.security` is disabled in
+  Elasticsearch so services are reachable over plain HTTP without
+  credentials. Enable security and TLS before any production use.
+- Elasticsearch uses a 10Gi PVC via `volumeClaimTemplates`. Provide a
+  `StorageClass` that supports `ReadWriteOnce` (or customize it).
+- The Elasticsearch StatefulSet runs as UID `1000` (`fsGroup`) and uses
+  `securityContext` accordingly.
+- To scale Elasticsearch, add nodes to `discovery.seed_hosts`,
+  `cluster.initial_master_nodes`, and `replicas` in the StatefulSet.

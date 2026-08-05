@@ -1,0 +1,20 @@
+{
+  "name": "apm-test-suite",
+  "private": true,
+  "version": "1.0.0",
+  "description": "Jest + Playwright (TypeScript) test suite for the Elastic APM demo stack",
+  "scripts": {
+    "test": "npm run test:unit && npm run test:e2e",
+    "test:unit": "jest --runInBand",
+    "test:e2e": "playwright test",
+    "typecheck": "tsc --noEmit"
+  },
+  "devDependencies": {
+    "@playwright/test": "^1.49.1",
+    "@types/jest": "29.5.14",
+    "@types/node": "20.17.9",
+    "jest": "29.7.0",
+    "ts-jest": "29.2.5",
+    "typescript": "5.7.2"
+  }
+}

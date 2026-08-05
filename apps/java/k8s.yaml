@@ -1,0 +1,67 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: java-app
+  namespace: elastic-stack
+  labels:
+    app: java-app
+    app.kubernetes.io/part-of: elastic-apm-demo
+spec:
+  selector:
+    app: java-app
+  ports:
+    - name: http
+      port: 8080
+      targetPort: 8080
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: java-app
+  namespace: elastic-stack
+  labels:
+    app: java-app
+    app.kubernetes.io/part-of: elastic-apm-demo
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: java-app
+  template:
+    metadata:
+      labels:
+        app: java-app
+        app.kubernetes.io/part-of: elastic-apm-demo
+    spec:
+      containers:
+        - name: app
+          image: elastic-apm-demo/java-app:latest
+          imagePullPolicy: IfNotPresent
+          ports:
+            - name: http
+              containerPort: 8080
+          env:
+            - name: ELASTIC_APM_SERVER_URL
+              value: "http://apm-server:8200"
+            - name: ELASTIC_APM_SERVICE_NAME
+              value: "java-app"
+            - name: ELASTIC_APM_ENVIRONMENT
+              value: "development"
+          resources:
+            requests:
+              memory: 256Mi
+              cpu: 100m
+            limits:
+              memory: 512Mi
+          readinessProbe:
+            httpGet:
+              path: /
+              port: http
+            initialDelaySeconds: 10
+            periodSeconds: 5
+          livenessProbe:
+            httpGet:
+              path: /
+              port: http
+            initialDelaySeconds: 20
+            periodSeconds: 10

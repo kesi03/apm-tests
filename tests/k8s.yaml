@@ -1,0 +1,51 @@
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: apm-tests
+  namespace: elastic-stack
+  labels:
+    app: apm-tests
+    app.kubernetes.io/part-of: elastic-apm-demo
+spec:
+  backoffLimit: 0
+  ttlSecondsAfterFinished: 3600
+  template:
+    metadata:
+      labels:
+        app: apm-tests
+        app.kubernetes.io/part-of: elastic-apm-demo
+    spec:
+      restartPolicy: Never
+      containers:
+        - name: tests
+          image: elastic-apm-demo/tests:latest
+          imagePullPolicy: IfNotPresent
+          env:
+            - name: ELASTICSEARCH_URL
+              value: "http://elasticsearch:9200"
+            - name: KIBANA_URL
+              value: "http://kibana:5601"
+            - name: APM_SERVER_URL
+              value: "http://apm-server:8200"
+            - name: JAVA_APP_URL
+              value: "http://java-app:8080"
+            - name: SPRING_BOOT_APP_URL
+              value: "http://spring-boot-app:8080"
+            - name: OPENLIBERTY_APP_URL
+              value: "http://openliberty-app:9080"
+            - name: EXPRESSJS_APP_URL
+              value: "http://expressjs-app:3000"
+            - name: REACT_APP_URL
+              value: "http://react-app"
+            - name: PYTHON_APP_URL
+              value: "http://python-app:5000"
+            - name: CSHARP_APP_URL
+              value: "http://csharp-app:5000"
+            - name: GOLANG_APP_URL
+              value: "http://golang-app:8080"
+          resources:
+            requests:
+              memory: 512Mi
+              cpu: 100m
+            limits:
+              memory: 2Gi

@@ -1,0 +1,24 @@
+# Playwright-based image that builds the React app and runs the e2e test.
+# Usage: build and push this image, then run the Kubernetes Job manifest below.
+
+FROM mcr.microsoft.com/playwright:latest
+
+WORKDIR /app
+
+# copy package manifests and install exact deps
+COPY package.json package-lock.json* ./
+RUN npm ci --silent
+
+# copy source, build static assets
+COPY . .
+RUN npm run build
+
+# install a small static server for serving ./dist
+RUN npm install -g http-server --silent
+
+# Expose port used by the server (not required by k8s but useful locally)
+EXPOSE 5173
+
+# Wait for the target TEST_BASE_URL (defaults to the in-cluster react service), then run Playwright tests.
+# Exit with Playwright test exit code so the Job reports success/failure.
+CMD ["bash","-lc","TEST_URL=${TEST_BASE_URL:-http://react-app.elastic-stack.svc.cluster.local} ; echo Waiting for $TEST_URL ; until curl -sSf "$TEST_URL" >/dev/null 2>&1; do echo waiting for $TEST_URL; sleep 1; done ; npx playwright test tests/playwright/trace.spec.js --reporter=list --timeout=30000"]

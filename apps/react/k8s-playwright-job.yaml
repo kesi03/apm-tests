@@ -1,0 +1,41 @@
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: react-playwright-e2e
+  namespace: elastic-stack
+  labels:
+    app: react-apm-e2e
+spec:
+  backoffLimit: 0
+  template:
+    metadata:
+      labels:
+        app: react-apm-e2e
+    spec:
+      restartPolicy: Never
+      containers:
+        - name: playwright
+          # Replace this image with the image you build & push from Dockerfile.playwright
+          image: your-registry/react-playwright:latest
+          imagePullPolicy: IfNotPresent
+          env:
+            # Point at the existing in-cluster React Service
+            - name: TEST_BASE_URL
+              value: "http://react-app.elastic-stack.svc.cluster.local"
+            - name: VITE_ELASTIC_APM_SERVER_URL
+              value: "http://apm-server:8200"
+            - name: VITE_ELASTIC_APM_SERVICE_NAME
+              value: "react-app"
+            - name: VITE_ELASTIC_APM_ENVIRONMENT
+              value: "ci"
+          # Optional: set resources/limits as appropriate for your cluster
+          resources:
+            requests:
+              cpu: "500m"
+              memory: "1Gi"
+            limits:
+              cpu: "1"
+              memory: "2Gi"
+      # If your cluster can't pull images from external registries, ensure image is available
+      # via your private registry or node-local cache.
+      # serviceAccountName: ci-runner-sa

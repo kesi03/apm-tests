@@ -1,0 +1,16 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: apm-server
+  namespace: elastic-stack
+  labels:
+    app: apm-server
+    app.kubernetes.io/part-of: elastic-stack
+spec:
+  type: LoadBalancer
+  selector:
+    app: apm-server
+  ports:
+    - name: http
+      port: 8200
+      targetPort: 8200

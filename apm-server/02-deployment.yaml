@@ -1,0 +1,59 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: apm-server
+  namespace: elastic-stack
+  labels:
+    app: apm-server
+    app.kubernetes.io/part-of: elastic-stack
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: apm-server
+  template:
+    metadata:
+      labels:
+        app: apm-server
+        app.kubernetes.io/part-of: elastic-stack
+    spec:
+      containers:
+        - name: apm-server
+          image: docker.elastic.co/apm/apm-server:8.19.15
+          args:
+            - "-e"
+            - "-c"
+            - "/etc/apm-server/apm-server.yml"
+            - "--strict.perms=false"
+          ports:
+            - name: http
+              containerPort: 8200
+          resources:
+            requests:
+              memory: 256Mi
+              cpu: 100m
+            limits:
+              memory: 512Mi
+          volumeMounts:
+            - name: config
+              mountPath: /etc/apm-server/apm-server.yml
+              subPath: apm-server.yml
+              readOnly: true
+          readinessProbe:
+            httpGet:
+              path: /
+              port: http
+            initialDelaySeconds: 15
+            periodSeconds: 10
+            timeoutSeconds: 5
+          livenessProbe:
+            httpGet:
+              path: /
+              port: http
+            initialDelaySeconds: 30
+            periodSeconds: 20
+            timeoutSeconds: 5
+      volumes:
+        - name: config
+          configMap:
+            name: apm-server-config

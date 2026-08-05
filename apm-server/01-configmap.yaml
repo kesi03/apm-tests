@@ -1,0 +1,23 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: apm-server-config
+  namespace: elastic-stack
+  labels:
+    app: apm-server
+    app.kubernetes.io/part-of: elastic-stack
+data:
+  apm-server.yml: |
+    apm-server:
+      host: "0.0.0.0:8200"
+      rum:
+        enabled: true
+        allow_origins: ['*']
+      auth:
+        anonymous:
+          enabled: true
+          allow_service: ['*']
+
+    output.elasticsearch:
+      hosts:
+        - "http://elasticsearch:9200"

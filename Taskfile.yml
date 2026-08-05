@@ -1,0 +1,136 @@
+# Taskfile: task runner for the Elastic Stack on Kubernetes.
+# Requires: kubectl and task (https://taskfile.dev).
+#
+#   task start   deploy Elasticsearch + Kibana + APM Server, wait for readiness
+#   task stop    remove the stack
+#   task status  show stack pods and services
+#   task logs    tail stack logs
+#   task test    run the Jest + Playwright test suite as a Kubernetes Job
+version: '3'
+
+vars:
+  NAMESPACE: elastic-stack
+  TIMEOUT: '300'
+  IMAGE_PREFIX: elastic-apm-demo
+  APPS:
+    - java
+    - spring-boot
+    - openliberty
+    - expressjs
+    - react
+    - python
+    - csharp
+    - golang
+
+tasks:
+  default:
+    desc: Deploy the Elastic Stack and wait for readiness
+    cmds:
+      - task: start
+
+  start:
+    desc: Deploy Elasticsearch, Kibana and APM Server, then wait for readiness
+    cmds:
+      - kubectl apply -k .
+      - kubectl rollout status statefulset/elasticsearch -n {{.NAMESPACE}} --timeout={{.TIMEOUT}}s
+      - kubectl rollout status deployment/kibana -n {{.NAMESPACE}} --timeout={{.TIMEOUT}}s
+      - kubectl rollout status deployment/apm-server -n {{.NAMESPACE}} --timeout={{.TIMEOUT}}s
+      - task: endpoints
+
+  endpoints:
+    desc: Show services and access fallbacks
+    cmds:
+      - kubectl get svc -n {{.NAMESPACE}}
+      - echo
+      - echo "If a service has no EXTERNAL-IP, access it with:"
+      - echo "  kubectl port-forward -n {{.NAMESPACE}} svc/kibana 5601"
+      - echo "  kubectl port-forward -n {{.NAMESPACE}} svc/elasticsearch 9200"
+      - echo "  kubectl port-forward -n {{.NAMESPACE}} svc/apm-server 8200"
+
+  stop:
+    desc: Remove the Elastic Stack from the cluster
+    cmds:
+      - kubectl delete -k . --ignore-not-found=true
+
+  status:
+    desc: Show stack pods and services
+    cmds:
+      - kubectl get pods,svc -n {{.NAMESPACE}} -l app.kubernetes.io/part-of=elastic-stack
+
+  logs:
+    desc: Tail logs of all stack pods
+    cmds:
+      - kubectl logs -n {{.NAMESPACE}} -l app.kubernetes.io/part-of=elastic-stack -f
+
+  start:apps:
+    desc: Build and deploy all demo apps (e.g. task start:apps:java)
+    cmds:
+      - for: { var: APPS }
+        task: start:apps:{{.ITEM}}
+
+  start:apps:java:
+    desc: Build and deploy the java demo app
+    cmds:
+      - task: deploy-app
+        vars: { APP_NAME: java }
+
+  start:apps:spring-boot:
+    desc: Build and deploy the spring-boot demo app
+    cmds:
+      - task: deploy-app
+        vars: { APP_NAME: spring-boot }
+
+  start:apps:openliberty:
+    desc: Build and deploy the openliberty demo app
+    cmds:
+      - task: deploy-app
+        vars: { APP_NAME: openliberty }
+
+  start:apps:expressjs:
+    desc: Build and deploy the expressjs demo app
+    cmds:
+      - task: deploy-app
+        vars: { APP_NAME: expressjs }
+
+  start:apps:react:
+    desc: Build and deploy the react demo app
+    cmds:
+      - task: deploy-app
+        vars: { APP_NAME: react }
+
+  start:apps:python:
+    desc: Build and deploy the python demo app
+    cmds:
+      - task: deploy-app
+        vars: { APP_NAME: python }
+
+  start:apps:csharp:
+    desc: Build and deploy the csharp demo app
+    cmds:
+      - task: deploy-app
+        vars: { APP_NAME: csharp }
+
+  start:apps:golang:
+    desc: Build and deploy the golang demo app
+    cmds:
+      - task: deploy-app
+        vars: { APP_NAME: golang }
+
+  deploy-app:
+    internal: true
+    dir: apps/{{.APP_NAME}}
+    cmds:
+      - docker build -t {{.IMAGE_PREFIX}}/{{.APP_NAME}}-app:latest .
+      - kubectl apply -f k8s.yaml
+
+  test:
+    desc: Build the test image and run the Jest + Playwright suite as a Job
+    cmds:
+      - docker build -t {{.IMAGE_PREFIX}}/tests:latest -f tests/Dockerfile tests/
+      - kubectl delete job/apm-tests -n {{.NAMESPACE}} --ignore-not-found=true
+      - kubectl apply -f tests/k8s.yaml
+      - cmd: kubectl wait --for=condition=complete --timeout={{.TIMEOUT}}s job/apm-tests -n {{.NAMESPACE}}
+        ignore_error: true
+      - kubectl logs job/apm-tests -n {{.NAMESPACE}}
+      - kubectl get job apm-tests -n {{.NAMESPACE}}
+      - kubectl wait --for=jsonpath=.status.succeeded=1 --timeout=10s job/apm-tests -n {{.NAMESPACE}}

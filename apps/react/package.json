@@ -1,0 +1,23 @@
+{
+  "name": "react-apm-demo",
+  "private": true,
+  "version": "1.0.0",
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "preview": "vite preview",
+    "test:e2e:docker": "serve -s dist -l 5173 & npx playwright test tests/playwright/trace.spec.js --reporter=list"
+  },
+  "dependencies": {
+    "@elastic/apm-rum": "5.17.5",
+    "react": "18.3.1",
+    "react-dom": "18.3.1"
+  },
+  "devDependencies": {
+    "@vitejs/plugin-react": "4.3.4",
+    "vite": "5.4.11",
+    "@playwright/test": "^1.40.0",
+    "serve": "^14.0.1"
+  }
+}

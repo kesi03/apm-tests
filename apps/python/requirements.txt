@@ -1,0 +1,2 @@
+flask==3.0.3
+elastic-apm==6.26.2

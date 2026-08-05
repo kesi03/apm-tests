@@ -1,0 +1,63 @@
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: react-kaniko-build
+  namespace: elastic-stack
+spec:
+  backoffLimit: 0
+  template:
+    spec:
+      restartPolicy: Never
+      containers:
+        - name: kaniko
+          image: gcr.io/kaniko-project/executor:latest
+          args:
+            # Replace the CONTEXT below with a git URL accessible from the cluster
+            # Example: git://github.com/your-org/your-repo.git#main
+            - "--context=REPLACE_WITH_GIT_CONTEXT"
+            - "--dockerfile=apps/react/Dockerfile.playwright"
+            - "--destination=REPLACE_WITH_REGISTRY/your-repo/react-playwright:latest"
+            - "--insecure"
+          env:
+            # If you use a private registry, mount dockerconfigjson via imagePullSecrets or a volume
+            - name: DOCKER_CONFIG
+              value: "/kaniko/.docker/"
+          volumeMounts:
+            - name: kaniko-secret
+              mountPath: /kaniko/.docker/
+      volumes:
+        - name: kaniko-secret
+          secret:
+            secretName: kaniko-docker-config  # Create this secret with your registry creds (type: kubernetes.io/dockerconfigjson)
+      serviceAccountName: kaniko-builder
+---
+# Optional: a minimal ServiceAccount and RBAC for Kaniko (may need cluster or namespace permissions depending on your registry setup).
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: kaniko-builder
+  namespace: elastic-stack
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: kaniko-access
+  namespace: elastic-stack
+rules:
+  - apiGroups: [""]
+    resources: ["secrets"]
+    verbs: ["get"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: kaniko-access-binding
+  namespace: elastic-stack
+subjects:
+  - kind: ServiceAccount
+    name: kaniko-builder
+    namespace: elastic-stack
+roleRef:
+  kind: Role
+  name: kaniko-access
+  apiGroup: rbac.authorization.k8s.io
