@@ -63,6 +63,9 @@ Start, stop, or check the stack with the provided scripts or the
 | `task start:apps` | Build and deploy all demo apps |
 | `task start:apps:<name>` | Build and deploy one demo app, e.g. `task start:apps:java` |
 | `task test` | Run the Jest + Playwright test suite as a Kubernetes Job |
+| `task start:heartbeat` | Deploy the Heartbeat uptime-monitor CronJob (every 45 min) |
+| `task run:heartbeat` | Trigger one heartbeat check pass immediately |
+| `task stop:heartbeat` | Remove the Heartbeat CronJob |
 
 Set `TIMEOUT` to adjust the rollout wait (default `300` seconds).
 
@@ -133,6 +136,34 @@ JAVA_APP_URL=http://localhost:8080 ... npm test
 Run locally (from `tests/`) with `npm install` (plus
 `npx playwright install chromium` for browser binaries), then
 `npm run typecheck`, `npm run test:unit`, or `npm run test:e2e`.
+
+## Heartbeat (uptime monitors)
+
+[Heartbeat](https://www.elastic.co/guide/en/beats/heartbeat/8.19/index.html)
+is a lightweight daemon that periodically checks service availability. A
+Heartbeat **CronJob** lives in `heartbeat/` and runs every 45 minutes,
+checking every server-side demo app (the React app is excluded). Each run is
+a single pass over all monitors (`heartbeat.run_once: true`) that then exits.
+
+| Monitor      | URL(s)                   | Expected status |
+|--------------|--------------------------|-----------------|
+| `<app>-http` | `/<app>-app:<port>/`, `/<app>-app:<port>/slow` | 200 |
+| `<app>-error` | `/<app>-app:<port>/error` | 500 |
+
+Each monitor sets `service.name` to the app's APM service name, so the
+Uptime monitor links to the app's APM service in Kibana. Uptime results are
+shipped to Elasticsearch (`heartbeat-*` indices) and appear in
+**Observability → Uptime**.
+
+```sh
+task start:heartbeat   # replace the old Deployment with the CronJob
+task run:heartbeat     # trigger one check pass now (manual Job)
+task stop:heartbeat    # remove the CronJob
+```
+
+Edit `heartbeat/heartbeat.yml` (also embedded in the ConfigMap in
+`heartbeat/k8s.yaml`) to change the endpoints; adjust the cadence in the
+CronJob `schedule` (default `*/45 * * * *`).
 
 ## Cleanup
 

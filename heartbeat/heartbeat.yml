@@ -1,0 +1,149 @@
+# Elastic Heartbeat monitors for the demo apps.
+#
+# Each server-side app is checked on its three demo routes:
+#   - /        -> 200 (app up)
+#   - /slow    -> 200 (slow endpoint works)
+#   - /error   -> 500 (error route raises an exception as expected)
+#
+# Uptime results are written to Elasticsearch (heartbeat-* indices) and
+# shown in Kibana under Observability -> Uptime. The `service.name` on each
+# monitor matches the app's APM service name, so the Uptime monitor links to
+# the corresponding APM service in Kibana.
+
+# Run all monitors exactly once, then exit. This lets the Heartbeat daemon run
+# as a Kubernetes CronJob (one full check pass every 45 minutes) instead of a
+# long-running Deployment. The monitor schedules below are still required and
+# are used for the `monitor.timespan` field.
+heartbeat.run_once: true
+
+heartbeat.monitors:
+  - type: http
+    id: java-http
+    name: java-app (/, /slow)
+    service.name: java-app
+    schedule: '@every 45m'
+    urls: ["http://java-app:8080/", "http://java-app:8080/slow"]
+    check.response.status: [200]
+    check.timeout: 10s
+
+  - type: http
+    id: java-error
+    name: java-app /error
+    service.name: java-app
+    schedule: '@every 45m'
+    urls: ["http://java-app:8080/error"]
+    check.response.status: [500]
+    check.timeout: 10s
+
+  - type: http
+    id: spring-boot-http
+    name: spring-boot-app (/, /slow)
+    service.name: spring-boot-app
+    schedule: '@every 45m'
+    urls: ["http://spring-boot-app:8080/", "http://spring-boot-app:8080/slow"]
+    check.response.status: [200]
+    check.timeout: 10s
+
+  - type: http
+    id: spring-boot-error
+    name: spring-boot-app /error
+    service.name: spring-boot-app
+    schedule: '@every 45m'
+    urls: ["http://spring-boot-app:8080/error"]
+    check.response.status: [500]
+    check.timeout: 10s
+
+  - type: http
+    id: openliberty-http
+    name: openliberty-app (/, /slow)
+    service.name: openliberty-app
+    schedule: '@every 45m'
+    urls: ["http://openliberty-app:9080/", "http://openliberty-app:9080/slow"]
+    check.response.status: [200]
+    check.timeout: 10s
+
+  - type: http
+    id: openliberty-error
+    name: openliberty-app /error
+    service.name: openliberty-app
+    schedule: '@every 45m'
+    urls: ["http://openliberty-app:9080/error"]
+    check.response.status: [500]
+    check.timeout: 10s
+
+  - type: http
+    id: expressjs-http
+    name: expressjs-app (/, /slow)
+    service.name: expressjs-app
+    schedule: '@every 45m'
+    urls: ["http://expressjs-app:3000/", "http://expressjs-app:3000/slow"]
+    check.response.status: [200]
+    check.timeout: 10s
+
+  - type: http
+    id: expressjs-error
+    name: expressjs-app /error
+    service.name: expressjs-app
+    schedule: '@every 45m'
+    urls: ["http://expressjs-app:3000/error"]
+    check.response.status: [500]
+    check.timeout: 10s
+
+  - type: http
+    id: python-http
+    name: python-app (/, /slow)
+    service.name: python-app
+    schedule: '@every 45m'
+    urls: ["http://python-app:5000/", "http://python-app:5000/slow"]
+    check.response.status: [200]
+    check.timeout: 10s
+
+  - type: http
+    id: python-error
+    name: python-app /error
+    service.name: python-app
+    schedule: '@every 45m'
+    urls: ["http://python-app:5000/error"]
+    check.response.status: [500]
+    check.timeout: 10s
+
+  - type: http
+    id: csharp-http
+    name: csharp-app (/, /slow)
+    service.name: csharp-app
+    schedule: '@every 45m'
+    urls: ["http://csharp-app:5000/", "http://csharp-app:5000/slow"]
+    check.response.status: [200]
+    check.timeout: 10s
+
+  - type: http
+    id: csharp-error
+    name: csharp-app /error
+    service.name: csharp-app
+    schedule: '@every 45m'
+    urls: ["http://csharp-app:5000/error"]
+    check.response.status: [500]
+    check.timeout: 10s
+
+  - type: http
+    id: golang-http
+    name: golang-app (/, /slow)
+    service.name: golang-app
+    schedule: '@every 45m'
+    urls: ["http://golang-app:8080/", "http://golang-app:8080/slow"]
+    check.response.status: [200]
+    check.timeout: 10s
+
+  - type: http
+    id: golang-error
+    name: golang-app /error
+    service.name: golang-app
+    schedule: '@every 45m'
+    urls: ["http://golang-app:8080/error"]
+    check.response.status: [500]
+    check.timeout: 10s
+
+# Heartbeat ships uptime data directly to Elasticsearch. Security is disabled
+# in this development stack, so no credentials are required.
+output.elasticsearch:
+  hosts: ["http://elasticsearch:9200"]

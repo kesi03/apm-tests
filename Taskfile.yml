@@ -6,6 +6,9 @@
 #   task status  show stack pods and services
 #   task logs    tail stack logs
 #   task test    run the Jest + Playwright test suite as a Kubernetes Job
+#   task start:heartbeat  deploy the Heartbeat uptime-monitor CronJob (every 45 min)
+#   task run:heartbeat    trigger one heartbeat check pass now
+#   task stop:heartbeat   remove the Heartbeat CronJob
 version: '3'
 
 vars:
@@ -134,3 +137,22 @@ tasks:
       - kubectl logs job/apm-tests -n {{.NAMESPACE}}
       - kubectl get job apm-tests -n {{.NAMESPACE}}
       - kubectl wait --for=jsonpath=.status.succeeded=1 --timeout=10s job/apm-tests -n {{.NAMESPACE}}
+
+  start:heartbeat:
+    desc: Deploy the Heartbeat uptime-monitor CronJob for the demo apps (non-react, every 45 min)
+    cmds:
+      - kubectl delete deploy/heartbeat -n {{.NAMESPACE}} --ignore-not-found=true
+      - kubectl apply -f heartbeat/k8s.yaml
+
+  run:heartbeat:
+    desc: Trigger one heartbeat check pass immediately as a Job
+    cmds:
+      - kubectl delete job/heartbeat-manual -n {{.NAMESPACE}} --ignore-not-found=true
+      - kubectl create job --from=cronjob/heartbeat heartbeat-manual -n {{.NAMESPACE}}
+      - kubectl wait --for=condition=complete --timeout=300s job/heartbeat-manual -n {{.NAMESPACE}}
+
+  stop:heartbeat:
+    desc: Remove the Heartbeat CronJob
+    cmds:
+      - kubectl delete -f heartbeat/k8s.yaml --ignore-not-found=true
+      - kubectl delete deploy/heartbeat -n {{.NAMESPACE}} --ignore-not-found=true
