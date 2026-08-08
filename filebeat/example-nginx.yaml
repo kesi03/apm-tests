@@ -1,0 +1,18 @@
+apiVersion: v1
+kind: Pod
+metadata:
+  name: nginx-example
+  namespace: default
+  labels:
+    app: nginx-example
+  annotations:
+    co.elastic.logs/enabled: "true"
+    co.elastic.logs/module: "nginx"
+    co.elastic.logs/fileset.stdout: "access"
+    co.elastic.logs/fileset.stderr: "error"
+spec:
+  containers:
+    - name: nginx
+      image: nginx:1.27
+      ports:
+        - containerPort: 80

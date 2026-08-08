@@ -1,0 +1,47 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: filebeat-config
+  namespace: kube-system
+  labels:
+    k8s-app: filebeat
+data:
+  filebeat.yml: |
+    # Hints-based autodiscover. Filebeat watches Kubernetes pods and enables
+    # the container input automatically. Pods can opt in/out and override the
+    # parsing via `co.elastic.logs/*` annotations, e.g.:
+    #
+    #   annotations:
+    #     co.elastic.logs/enabled: "true"
+    #     co.elastic.logs/module: "nginx"
+    #     co.elastic.logs/fileset.stdout: "access"
+    #     co.elastic.logs/fileset.stderr: "error"
+    #
+    filebeat.autodiscover:
+      providers:
+        - type: kubernetes
+          node: ${NODE_NAME}
+          hints.enabled: true
+          hints.default_config:
+            type: filestream
+            id: kubernetes-container-logs-${data.kubernetes.pod.name}-${data.kubernetes.container.id}
+            paths:
+              - /var/log/containers/*-${data.kubernetes.container.id}.log
+            parsers:
+              - container: ~
+            prospector:
+              scanner:
+                fingerprint.enabled: true
+                symlinks: true
+            file_identity.fingerprint: ~
+            close.on_state_change.removed: false
+
+    processors:
+      - add_cloud_metadata: {}
+      - add_host_metadata: {}
+
+    # The Elastic Stack runs in the `elastic-stack` namespace, so the
+    # in-cluster service DNS name must be fully qualified from kube-system.
+    # Security is disabled in this development stack, so no credentials.
+    output.elasticsearch:
+      hosts: ["http://elasticsearch.elastic-stack.svc.cluster.local:9200"]

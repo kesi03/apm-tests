@@ -32,6 +32,8 @@ spec:
       labels:
         app: golang-app
         app.kubernetes.io/part-of: elastic-apm-demo
+      annotations:
+        co.elastic.logs/enabled: "true"
     spec:
       containers:
         - name: app

@@ -32,6 +32,11 @@ spec:
       labels:
         app: react-app
         app.kubernetes.io/part-of: elastic-apm-demo
+      annotations:
+        co.elastic.logs/enabled: "true"
+        co.elastic.logs/module: "nginx"
+        co.elastic.logs/fileset.stdout: "access"
+        co.elastic.logs/fileset.stderr: "error"
     spec:
       containers:
         - name: app

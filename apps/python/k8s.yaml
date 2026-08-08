@@ -10,9 +10,9 @@ spec:
   selector:
     app: python-app
   ports:
-    - name: http
-      port: 5000
-      targetPort: 5000
+  - name: http
+    port: 5000
+    targetPort: 5000
 ---
 apiVersion: apps/v1
 kind: Deployment
@@ -32,36 +32,39 @@ spec:
       labels:
         app: python-app
         app.kubernetes.io/part-of: elastic-apm-demo
+      annotations:
+        co.elastic.logs/enabled: "true"
+        instrumentation.opentelemetry.io/inject-python: elastic-stack/otel-instrumentation
     spec:
       containers:
-        - name: app
-          image: elastic-apm-demo/python-app:latest
-          imagePullPolicy: IfNotPresent
-          ports:
-            - name: http
-              containerPort: 5000
-          env:
-            - name: ELASTIC_APM_SERVER_URL
-              value: "http://apm-server:8200"
-            - name: ELASTIC_APM_SERVICE_NAME
-              value: "python-app"
-            - name: ELASTIC_APM_ENVIRONMENT
-              value: "development"
-          resources:
-            requests:
-              memory: 128Mi
-              cpu: 50m
-            limits:
-              memory: 256Mi
-          readinessProbe:
-            httpGet:
-              path: /
-              port: http
-            initialDelaySeconds: 10
-            periodSeconds: 5
-          livenessProbe:
-            httpGet:
-              path: /
-              port: http
-            initialDelaySeconds: 20
-            periodSeconds: 10
+      - name: app
+        image: elastic-apm-demo/python-app:latest
+        imagePullPolicy: IfNotPresent
+        ports:
+        - name: http
+          containerPort: 5000
+        env:
+        - name: ELASTIC_APM_SERVER_URL
+          value: http://apm-server:8200
+        - name: ELASTIC_APM_SERVICE_NAME
+          value: python-app
+        - name: ELASTIC_APM_ENVIRONMENT
+          value: development
+        resources:
+          requests:
+            memory: 128Mi
+            cpu: 50m
+          limits:
+            memory: 256Mi
+        readinessProbe:
+          httpGet:
+            path: /
+            port: http
+          initialDelaySeconds: 10
+          periodSeconds: 5
+        livenessProbe:
+          httpGet:
+            path: /
+            port: http
+          initialDelaySeconds: 20
+          periodSeconds: 10

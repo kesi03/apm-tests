@@ -12,11 +12,12 @@ All resources live in the `elastic-stack` namespace and are applied via
 
 ## Components
 
-| Component       | Service          | Port | Type         |
-|-----------------|------------------|------|--------------|
-| Elasticsearch   | `elasticsearch`  | 9200 | LoadBalancer |
-| Kibana          | `kibana`         | 5601 | LoadBalancer |
-| APM Server      | `apm-server`     | 8200 | LoadBalancer |
+| Component                | Service          | Port | Type         |
+|--------------------------|------------------|------|--------------|
+| Elasticsearch            | `elasticsearch`  | 9200 | LoadBalancer |
+| Kibana                   | `kibana`         | 5601 | LoadBalancer |
+| APM Server               | `apm-server`     | 8200 | LoadBalancer |
+| OpenTelemetry Collector  | `otel-collector` | 4317/4318 | ClusterIP |
 
 ## Prerequisites
 
@@ -66,6 +67,10 @@ Start, stop, or check the stack with the provided scripts or the
 | `task start:heartbeat` | Deploy the Heartbeat uptime-monitor CronJob (every 45 min) |
 | `task run:heartbeat` | Trigger one heartbeat check pass immediately |
 | `task stop:heartbeat` | Remove the Heartbeat CronJob |
+| `task start:otel` | Deploy the OpenTelemetry Collector + Instrumentation CR |
+| `task stop:otel` | Remove the OpenTelemetry resources |
+| `task start:filebeat` | Deploy the Filebeat DaemonSet (container logs → Elasticsearch) |
+| `task stop:filebeat` | Remove the Filebeat DaemonSet |
 
 Set `TIMEOUT` to adjust the rollout wait (default `300` seconds).
 
@@ -164,6 +169,100 @@ task stop:heartbeat    # remove the CronJob
 Edit `heartbeat/heartbeat.yml` (also embedded in the ConfigMap in
 `heartbeat/k8s.yaml`) to change the endpoints; adjust the cadence in the
 CronJob `schedule` (default `*/45 * * * *`).
+
+## OpenTelemetry (auto-instrumentation)
+
+The demo apps report traces twice: through their original Elastic APM agents
+and through **OpenTelemetry** via the [OpenTelemetry Operator](https://opentelemetry.io/docs/kubernetes/operator/)
+plus an upstream `otel/opentelemetry-collector-contrib`. The collector forwards
+the OTLP traces to the APM Server, which accepts OTLP natively on port 8200
+(anonymous, since this dev stack runs without security).
+
+### Install the Operator (Helm)
+
+The Operator injects agents automatically, and it requires
+[cert-manager](https://cert-manager.io) for its webhooks:
+
+```sh
+# 1. cert-manager
+helm repo add jetstack https://charts.jetstack.io
+helm install cert-manager jetstack/cert-manager \
+  --namespace cert-manager --create-namespace \
+  --set crds.enabled=true
+
+# 2. OpenTelemetry Operator
+helm repo add open-telemetry https://open-telemetry.github.io/opentelemetry-helm-charts
+helm install opentelemetry-operator open-telemetry/opentelemetry-operator \
+  --namespace opentelemetry-operator-system --create-namespace
+```
+
+### Deploy collector + Instrumentation CR
+
+```sh
+kubectl apply -f opentelemetry/collector.yaml        # collector + Service
+kubectl apply -f opentelemetry/instrumentation.yaml  # Instrumentation CR
+```
+
+- `opentelemetry/collector.yaml` runs `otel/opentelemetry-collector-contrib`
+  with an OTLP receiver (gRPC `4317`, HTTP `4318`), a batch processor, and an
+  `otlp_grpc/apm` exporter pointing at `apm-server:8200` (`tls.insecure: true`).
+- `opentelemetry/instrumentation.yaml` defines the `otel-instrumentation`
+  resource that the injection annotations reference. Agents export over
+  `http/protobuf` to `http://otel-collector:4318` and sample every trace.
+
+### Annotate workloads
+
+Add an `instrumentation.opentelemetry.io/inject-*` annotation to a Deployment
+pod template to have the Operator inject the matching agent:
+
+| App            | Annotation                                        |
+|----------------|---------------------------------------------------|
+| java-app       | `instrumentation.opentelemetry.io/inject-java`    |
+| spring-boot-app| `instrumentation.opentelemetry.io/inject-java`    |
+| openliberty-app| `instrumentation.opentelemetry.io/inject-java`    |
+| expressjs-app  | `instrumentation.opentelemetry.io/inject-nodejs`  |
+| python-app     | `instrumentation.opentelemetry.io/inject-python`  |
+| csharp-app     | `instrumentation.opentelemetry.io/inject-dotnet`  |
+
+Each annotation value is `<namespace>/<instrumentation-name>`, i.e.
+`elastic-stack/otel-instrumentation`. The Operator injects an init container
+with the agent plus `OTEL_EXPORTER_OTLP_ENDPOINT` and friends; traces then flow
+`app -> otel-collector -> apm-server -> Elasticsearch` and appear in
+**APM → Services** with `agent.name` `opentelemetry/...` alongside the Elastic
+agents' traces.
+
+The **react-app** (browser RUM) and **golang-app** (no auto-instrumentation
+image exists for Go) are intentionally left unannotated.
+
+## Filebeat (container logs)
+
+[Filebeat](https://www.elastic.co/guide/en/beats/filebeat/8.19/index.html) runs
+as a **DaemonSet** in `kube-system` (`filebeat/`) and ships every container's
+stdout/stderr to Elasticsearch (`filebeat-*` indices), visible in
+**Observability → Logs**.
+
+It uses hints-based autodiscover: pod annotations with the `co.elastic.logs`
+prefix control parsing per pod. The default is a raw `container` input, so
+enabling logging explicitly is optional. For structured parsing of a workload
+like nginx, annotate its pod template:
+
+```yaml
+annotations:
+  co.elastic.logs/enabled: "true"
+  co.elastic.logs/module: "nginx"
+  co.elastic.logs/fileset.stdout: "access"
+  co.elastic.logs/fileset.stderr: "error"
+```
+
+See `filebeat/example-nginx.yaml` for a complete example. Since Filebeat runs in
+`kube-system`, its Elasticsearch output uses the fully-qualified service DNS
+name `elasticsearch.elastic-stack.svc.cluster.local:9200` (no credentials, as
+security is disabled in this dev stack).
+
+```sh
+task start:filebeat   # deploy the Filebeat DaemonSet + RBAC + ConfigMap
+task stop:filebeat    # remove it
+```
 
 ## Cleanup
 

@@ -6,6 +6,9 @@ metadata:
 spec:
   backoffLimit: 0
   template:
+    metadata:
+      annotations:
+        co.elastic.logs/enabled: "true"
     spec:
       restartPolicy: Never
       containers:

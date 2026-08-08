@@ -1,0 +1,39 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: azure-devops-agent
+  namespace: elastic-stack
+  labels:
+    app: azure-devops-agent
+    app.kubernetes.io/part-of: elastic-stack
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: azure-devops-agent
+  template:
+    metadata:
+      labels:
+        app: azure-devops-agent
+        app.kubernetes.io/part-of: elastic-stack
+    spec:
+      containers:
+        - name: azure-devops-agent
+          image: elastic-apm-demo/azure-devops-agent:latest
+          imagePullPolicy: IfNotPresent
+          env:
+            - name: AZURE_DEVOPS_EXTENSION_PAT
+              valueFrom:
+                secretKeyRef:
+                  name: azure-devops-agent
+                  key: AZURE_DEVOPS_EXTENSION_PAT
+            - name: AZURE_DEVOPS_URL
+              value: https://dev.azure.com/mockholm
+            - name: AZURE_DEVOPS_POOL
+              value: mockholmian
+          resources:
+            requests:
+              memory: 512Mi
+              cpu: 250m
+            limits:
+              memory: 1Gi

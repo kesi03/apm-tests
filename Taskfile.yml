@@ -9,6 +9,11 @@
 #   task start:heartbeat  deploy the Heartbeat uptime-monitor CronJob (every 45 min)
 #   task run:heartbeat    trigger one heartbeat check pass now
 #   task stop:heartbeat   remove the Heartbeat CronJob
+#   task start:otel       deploy the OpenTelemetry Collector + Instrumentation CR
+#   task stop:otel        remove the OpenTelemetry resources
+#   task start:filebeat   deploy the Filebeat DaemonSet (docker/k8s logs -> Elasticsearch)
+#   task stop:filebeat    remove the Filebeat DaemonSet
+#   task build:agent AZDO_PAT=...  build the Azure DevOps agent image and store the PAT in the k8s secret
 version: '3'
 
 vars:
@@ -138,6 +143,19 @@ tasks:
       - kubectl get job apm-tests -n {{.NAMESPACE}}
       - kubectl wait --for=jsonpath=.status.succeeded=1 --timeout=10s job/apm-tests -n {{.NAMESPACE}}
 
+  build:agent:
+    desc: Build the Azure DevOps agent image and store AZDO_PAT in the k8s secret
+    vars:
+      AZDO_PAT: '{{.AZDO_PAT | default "$AZDO_PAT"}}'
+    cmds:
+      - docker build -t {{.IMAGE_PREFIX}}/azure-devops-agent:latest azure-devops-agent/
+      - cmd: |
+          [ -n "{{.AZDO_PAT}}" ] || { echo "AZDO_PAT is not set (pass AZDO_PAT=... or export it)"; exit 1; }
+          kubectl create secret generic azure-devops-agent \
+            --namespace {{.NAMESPACE}} \
+            --from-literal=AZURE_DEVOPS_EXTENSION_PAT="{{.AZDO_PAT}}" \
+            --dry-run=client -o yaml | kubectl apply -f -
+
   start:heartbeat:
     desc: Deploy the Heartbeat uptime-monitor CronJob for the demo apps (non-react, every 45 min)
     cmds:
@@ -156,3 +174,50 @@ tasks:
     cmds:
       - kubectl delete -f heartbeat/k8s.yaml --ignore-not-found=true
       - kubectl delete deploy/heartbeat -n {{.NAMESPACE}} --ignore-not-found=true
+
+  install:
+    desc: Deploy the Elastic Stack and wait for readiness
+    cmds:
+      - task: install:cert-manager
+      - task: install:otel
+  
+  # 1. cert-manager
+  install:cert-manager:
+    desc: Install cert-manager helm chart
+    cmds:
+      - helm repo add jetstack https://charts.jetstack.io
+      - helm upgrade --install cert-manager jetstack/cert-manager --namespace cert-manager --create-namespace --set crds.enabled=true
+
+  install:otel:
+    desc: Install OpenTelemetry helm charts
+    cmds:
+      # 2. OpenTelemetry Operator
+      - helm repo add open-telemetry https://open-telemetry.github.io/opentelemetry-helm-charts
+      - helm upgrade --install opentelemetry-operator open-telemetry/opentelemetry-operator --namespace opentelemetry-operator-system --create-namespace
+      
+  start:otel:
+    desc: Deploy the OpenTelemetry Collector and Instrumentation CR
+    cmds:
+      - kubectl apply -f opentelemetry/collector.yaml
+      - kubectl apply -f opentelemetry/instrumentation.yaml
+
+  stop:otel:
+    desc: Remove the OpenTelemetry resources
+    cmds:
+      - kubectl delete -f opentelemetry/instrumentation.yaml --ignore-not-found=true
+      - kubectl delete -f opentelemetry/collector.yaml --ignore-not-found=true
+
+  start:filebeat:
+    desc: Deploy the Filebeat DaemonSet to ship docker/k8s container logs to Elasticsearch
+    cmds:
+      - kubectl apply -f filebeat/00-rbac.yaml
+      - kubectl apply -f filebeat/01-configmap.yaml
+      - kubectl apply -f filebeat/02-daemonset.yaml
+      - kubectl rollout status daemonset/filebeat -n kube-system --timeout={{.TIMEOUT}}s
+
+  stop:filebeat:
+    desc: Remove the Filebeat DaemonSet
+    cmds:
+      - kubectl delete -f filebeat/02-daemonset.yaml --ignore-not-found=true
+      - kubectl delete -f filebeat/01-configmap.yaml --ignore-not-found=true
+      - kubectl delete -f filebeat/00-rbac.yaml --ignore-not-found=true

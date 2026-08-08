@@ -11,3 +11,4 @@ resources:
   - apm-server/01-configmap.yaml
   - apm-server/02-deployment.yaml
   - apm-server/03-service.yaml
+  - azure-devops-agent/01-deployment.yaml

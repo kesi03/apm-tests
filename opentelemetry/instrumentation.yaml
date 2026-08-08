@@ -1,0 +1,21 @@
+apiVersion: opentelemetry.io/v1alpha1
+kind: Instrumentation
+metadata:
+  name: otel-instrumentation
+  namespace: elastic-stack
+  labels:
+    app.kubernetes.io/part-of: elastic-stack
+spec:
+  exporter:
+    endpoint: http://otel-collector:4318
+  propagators:
+    - tracecontext
+    - baggage
+  sampler:
+    type: parentbased_traceidratio
+    argument: "1"
+  env:
+    - name: OTEL_EXPORTER_OTLP_PROTOCOL
+      value: http/protobuf
+    - name: OTEL_EXPORTER_OTLP_INSECURE
+      value: "true"

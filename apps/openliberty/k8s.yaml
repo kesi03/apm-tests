@@ -10,9 +10,9 @@ spec:
   selector:
     app: openliberty-app
   ports:
-    - name: http
-      port: 9080
-      targetPort: 9080
+  - name: http
+    port: 9080
+    targetPort: 9080
 ---
 apiVersion: apps/v1
 kind: Deployment
@@ -32,36 +32,39 @@ spec:
       labels:
         app: openliberty-app
         app.kubernetes.io/part-of: elastic-apm-demo
+      annotations:
+        co.elastic.logs/enabled: "true"
+        instrumentation.opentelemetry.io/inject-java: elastic-stack/otel-instrumentation
     spec:
       containers:
-        - name: app
-          image: elastic-apm-demo/openliberty-app:latest
-          imagePullPolicy: IfNotPresent
-          ports:
-            - name: http
-              containerPort: 9080
-          env:
-            - name: ELASTIC_APM_SERVER_URL
-              value: "http://apm-server:8200"
-            - name: ELASTIC_APM_SERVICE_NAME
-              value: "openliberty-app"
-            - name: ELASTIC_APM_ENVIRONMENT
-              value: "development"
-          resources:
-            requests:
-              memory: 512Mi
-              cpu: 200m
-            limits:
-              memory: 1Gi
-          readinessProbe:
-            httpGet:
-              path: /health/ready
-              port: http
-            initialDelaySeconds: 40
-            periodSeconds: 10
-          livenessProbe:
-            httpGet:
-              path: /health/live
-              port: http
-            initialDelaySeconds: 60
-            periodSeconds: 20
+      - name: app
+        image: elastic-apm-demo/openliberty-app:latest
+        imagePullPolicy: IfNotPresent
+        ports:
+        - name: http
+          containerPort: 9080
+        env:
+        - name: ELASTIC_APM_SERVER_URL
+          value: http://apm-server:8200
+        - name: ELASTIC_APM_SERVICE_NAME
+          value: openliberty-app
+        - name: ELASTIC_APM_ENVIRONMENT
+          value: development
+        resources:
+          requests:
+            memory: 512Mi
+            cpu: 200m
+          limits:
+            memory: 1Gi
+        readinessProbe:
+          httpGet:
+            path: /health/ready
+            port: http
+          initialDelaySeconds: 40
+          periodSeconds: 10
+        livenessProbe:
+          httpGet:
+            path: /health/live
+            port: http
+          initialDelaySeconds: 60
+          periodSeconds: 20

@@ -11,6 +11,8 @@ spec:
     metadata:
       labels:
         app: react-apm-e2e
+      annotations:
+        co.elastic.logs/enabled: "true"
     spec:
       restartPolicy: Never
       containers:
