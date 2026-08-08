@@ -16,6 +16,9 @@ spec:
       labels:
         app: azure-devops-agent
         app.kubernetes.io/part-of: elastic-stack
+      annotations:
+        co.elastic.logs/enabled: "true"
+        instrumentation.opentelemetry.io/inject-nodejs: elastic-stack/otel-instrumentation
     spec:
       containers:
         - name: azure-devops-agent
