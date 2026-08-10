@@ -24,11 +24,15 @@ spec:
           imagePullPolicy: IfNotPresent
           env:
             - name: ELASTICSEARCH_URL
-              value: "http://elasticsearch:9200"
+              value: "https://my-observability-project-d54a32.es.europe-west2.gcp.elastic.cloud:443"
+            - name: ELASTICSEARCH_API_KEY
+              value: "VlQwczY1OEI0a2lFamVIMVhVbHM6b2h0QWppbEtIbjBzSWJsRFVxMTRVZw=="
             - name: KIBANA_URL
-              value: "http://kibana:5601"
+              value: "https://my-observability-project-d54a32.kb.europe-west2.gcp.elastic.cloud:443"
             - name: APM_SERVER_URL
-              value: "http://apm-server:8200"
+              value: "https://my-observability-project-d54a32.apm.europe-west2.gcp.elastic.cloud:443"
+            - name: APM_API_KEY
+              value: "QkR1dzRwOEI0a2lFamVIMU9LeGI6b1RsV3BuT1NNcEYwWGpYY0dvWGgzUQ=="
             - name: JAVA_APP_URL
               value: "http://java-app:8080"
             - name: SPRING_BOOT_APP_URL

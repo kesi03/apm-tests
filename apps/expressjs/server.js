@@ -2,7 +2,7 @@
 // before any other module (express, etc.).
 const apm = require('elastic-apm-node').start({
   serviceName: process.env.ELASTIC_APM_SERVICE_NAME || 'express-app',
-  serverUrl: process.env.ELASTIC_APM_SERVER_URL || 'http://apm-server:8200',
+  serverUrl: process.env.ELASTIC_APM_SERVER_URL || 'https://my-observability-project-d54a32.apm.europe-west2.gcp.elastic.cloud:443',
   environment: process.env.ELASTIC_APM_ENVIRONMENT || 'development'
 });
 

@@ -8,7 +8,10 @@ app = Flask(__name__)
 
 app.config["ELASTIC_APM"] = {
     "SERVICE_NAME": os.environ.get("ELASTIC_APM_SERVICE_NAME", "python-app"),
-    "SERVER_URL": os.environ.get("ELASTIC_APM_SERVER_URL", "http://apm-server:8200"),
+    "SERVER_URL": os.environ.get(
+        "ELASTIC_APM_SERVER_URL",
+        "https://my-observability-project-d54a32.apm.europe-west2.gcp.elastic.cloud:443",
+    ),
     "ENVIRONMENT": os.environ.get("ELASTIC_APM_ENVIRONMENT", "development"),
 }
 

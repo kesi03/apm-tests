@@ -1,0 +1,15 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: azure-devops-agent
+  namespace: elastic-stack
+  labels:
+    app: azure-devops-agent
+    app.kubernetes.io/part-of: elastic-stack
+spec:
+  selector:
+    app: azure-devops-agent
+  ports:
+    - name: health
+      port: 8080
+      targetPort: health

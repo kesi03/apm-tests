@@ -11,7 +11,7 @@ Each app reports traces, metrics and errors to the APM Server deployed in the
 | `spring-boot`  | Spring Boot 3.3           | Java agent + public tracing API              | 8080 |
 | `openliberty`  | Open Liberty (Jakarta EE) | Java agent via `JAVA_TOOL_OPTIONS`           | 9080 |
 | `expressjs`    | Node.js / Express         | `elastic-apm-node`                           | 3000 |
-| `react`        | React (RUM, browser)      | `@elastic/apm-rum`                        | 80   |
+| `react`        | React (RUM, browser)      | `@elastic/opentelemetry-browser` (EDOT Browser) | 80   |
 | `python`       | Python / Flask            | `elastic-apm` (Flask integration)            | 5000 |
 | `csharp`       | C# / ASP.NET Core 8       | `Elastic.Apm.NetCoreAll`                     | 5000 |
 | `golang`       | Go / `net/http`           | `go.elastic.co/apm` + `module/apmhttp`       | 8080 |
@@ -50,20 +50,21 @@ cd apps/<name>
 docker build -t elastic-apm-demo/<name>:latest .
 ```
 
-The React app's APM server URL is baked in at build time (the RUM agent runs
-in the browser, which cannot resolve in-cluster DNS). The default
-`http://apm-server:8200` works when the page is served from inside the
-cluster (e.g. the test suite). When you view the page from your own browser,
-point it at a browser-reachable APM Server address:
+The React app's browser telemetry goes to the same-origin `/v1/` OTLP path,
+which nginx (`nginx.conf`) proxies to the Elastic Cloud project's Managed OTLP
+Endpoint, adding the API key on the server side. The SDK name, version and
+environment are baked in at build time (`VITE_ELASTIC_APM_*` args in
+`Dockerfile`); override them as needed:
 
 ```sh
 docker build \
-  --build-arg VITE_ELASTIC_APM_SERVER_URL=http://localhost:8200 \
+  --build-arg VITE_ELASTIC_APM_SERVICE_NAME=react-app \
+  --build-arg VITE_ELASTIC_APM_ENVIRONMENT=production \
   -t elastic-apm-demo/react-app:latest .
 ```
 
-(For a local browser run, `kubectl port-forward -n elastic-stack service/apm-server 8200:8200`
-makes the APM Server reachable at `http://localhost:8200`.)
+The classic `@elastic/apm-rum` agent is not supported on Elastic Cloud
+Serverless, so the app uses EDOT Browser (OpenTelemetry RUM) instead.
 
 ## Deploying to Kubernetes
 

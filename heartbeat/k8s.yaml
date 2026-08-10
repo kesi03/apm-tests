@@ -153,10 +153,22 @@ data:
         check.response.status: [500]
         check.timeout: 10s
 
-    # Heartbeat ships uptime data directly to Elasticsearch. Security is
-    # disabled in this development stack, so no credentials are required.
+      - type: http
+        id: azure-devops-agent-health
+        name: azure-devops-agent /healthz
+        service.name: azure-devops-agent
+        schedule: '@every 45m'
+        urls: ["http://azure-devops-agent:8080/healthz"]
+        check.response.status: [200]
+        check.timeout: 10s
+
+    # Heartbeat ships uptime data to Elastic Cloud (managed Elasticsearch).
+    # NOTE: libbeat expects the RAW "id:api_key" form here and base64-encodes
+    # it itself when sending the Authorization header. Passing the already
+    # base64-encoded string yields "401 invalid ApiKey value" from Elasticsearch.
     output.elasticsearch:
-      hosts: ["http://elasticsearch:9200"]
+      hosts: ["https://my-observability-project-d54a32.es.europe-west2.gcp.elastic.cloud:443"]
+      api_key: "VT0s658B4kiEjeH1XUls:ohtAjilKHn0sIblDUq14Ug"
 ---
 apiVersion: batch/v1
 kind: CronJob

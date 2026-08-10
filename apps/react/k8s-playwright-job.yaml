@@ -25,7 +25,7 @@ spec:
             - name: TEST_BASE_URL
               value: "http://react-app.elastic-stack.svc.cluster.local"
             - name: VITE_ELASTIC_APM_SERVER_URL
-              value: "http://apm-server:8200"
+              value: "https://my-observability-project-d54a32.apm.europe-west2.gcp.elastic.cloud:443"
             - name: VITE_ELASTIC_APM_SERVICE_NAME
               value: "react-app"
             - name: VITE_ELASTIC_APM_ENVIRONMENT

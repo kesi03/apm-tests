@@ -1,0 +1,15 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: teamcity-server
+  namespace: elastic-stack
+  labels:
+    app: teamcity-server
+    app.kubernetes.io/part-of: elastic-stack
+spec:
+  selector:
+    app: teamcity-server
+  ports:
+    - name: http
+      port: 8111
+      targetPort: http

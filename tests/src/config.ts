@@ -2,9 +2,19 @@ const env = (name: string, fallback: string): string => process.env[name] || fal
 
 export const config = {
   stack: {
-    elasticsearch: env('ELASTICSEARCH_URL', 'http://elasticsearch:9200'),
-    kibana: env('KIBANA_URL', 'http://kibana:5601'),
-    apmServer: env('APM_SERVER_URL', 'http://apm-server:8200')
+    elasticsearch: env(
+      'ELASTICSEARCH_URL',
+      'https://my-observability-project-d54a32.es.europe-west2.gcp.elastic.cloud:443'
+    ),
+    // Full-privilege API key for the Elastic Cloud deployment. Leave empty to
+    // skip ES-backed assertions (they are skipped when access is denied).
+    elasticsearchApiKey: env('ELASTICSEARCH_API_KEY', ''),
+    kibana: env('KIBANA_URL', 'https://my-observability-project-d54a32.kb.europe-west2.gcp.elastic.cloud:443'),
+    apmServer: env(
+      'APM_SERVER_URL',
+      'https://my-observability-project-d54a32.apm.europe-west2.gcp.elastic.cloud:443'
+    ),
+    apmApiKey: env('APM_API_KEY', 'QkR1dzRwOEI0a2lFamVIMU9LeGI6b1RsV3BuT1NNcEYwWGpYY0dvWGgzUQ==')
   },
   apps: {
     java: env('JAVA_APP_URL', 'http://java-app:8080'),

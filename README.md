@@ -1,111 +1,121 @@
-# Elastic Stack on Kubernetes
+# Elastic APM Demo on Kubernetes
 
-A minimal Kubernetes deployment of the Elastic Stack for APM:
+Demo apps instrumented with Elastic APM agents, shipping telemetry to a
+**managed Elastic Cloud** deployment (`my-observability-project-d54a32`) instead
+of a self-hosted Elastic Stack:
 
-- **Elasticsearch 8.19** — StatefulSet (1 replica), PVC-backed storage
-- **Kibana 8.19** — Deployment
-- **APM Server 8.19** — Deployment, ingesting into Elasticsearch's built-in
-  APM integration
+- **Elastic Cloud APM Server** — receives APM/OTLP telemetry from the demo apps
+- **Elastic Cloud Elasticsearch** — stores traces, metrics, and heartbeat data
+- **Elastic Cloud Kibana** — UI for Observability (APM, Uptime, Logs)
 
-All resources live in the `elastic-stack` namespace and are applied via
-[kustomize](https://kustomize.io/).
+All Kubernetes resources live in the `elastic-stack` namespace and are applied
+via [kustomize](https://kustomize.io/).
+
+## Elastic Cloud endpoints
+
+| Component | Endpoint |
+|-----------|----------|
+| APM Server | `https://my-observability-project-d54a32.apm.europe-west2.gcp.elastic.cloud:443` |
+| Elasticsearch | `https://my-observability-project-d54a32.es.europe-west2.gcp.elastic.cloud:443` |
+| Kibana | `https://my-observability-project-d54a32.kb.europe-west2.gcp.elastic.cloud:443` |
+
+Authentication uses **API keys** (base64 `id:key`):
+
+- `apps/secret.yaml` creates Secret `elastic-apm` with the **APM API key**
+  (key `token`). Demo apps reference it via `secretKeyRef` as
+  `ELASTIC_APM_API_KEY`.
+- `tests/k8s.yaml` and `heartbeat/` embed **Elasticsearch API key(s)** for
+  querying/writing data. Note that libbeat (heartbeat) expects the raw
+  `id:key` form and base64-encodes it itself; the already-encoded form
+  produces `401 invalid ApiKey value`.
 
 ## Components
 
-| Component                | Service          | Port | Type         |
-|--------------------------|------------------|------|--------------|
-| Elasticsearch            | `elasticsearch`  | 9200 | LoadBalancer |
-| Kibana                   | `kibana`         | 5601 | LoadBalancer |
-| APM Server               | `apm-server`     | 8200 | LoadBalancer |
-| OpenTelemetry Collector  | `otel-collector` | 4317/4318 | ClusterIP |
+| Component | Description |
+|-----------|-------------|
+| 8 demo apps (`apps/`) | Java, Spring Boot, OpenLiberty, Express.js, Python/Flask, C#/.NET, Go, React (RUM) |
+| `otel-collector` | OpenTelemetry Collector forwarding OTLP traces to the cloud APM |
+| `heartbeat` | Uptime CronJob (every 45 min) writing `heartbeat-*` to the cloud ES |
+| `azure-devops-agent` | Azure DevOps self-hosted agent + health sidecar |
+| `filebeat` | Log shipping DaemonSet (left unchanged; see note below) |
 
 ## Prerequisites
 
 - A Kubernetes cluster and `kubectl` configured
-- Cluster nodes with `vm.max_map_count >= 262144` (required by Elasticsearch):
-
-  ```sh
-  sudo sysctl -w vm.max_map_count=262144
-  ```
-
-  For a persistent setting, add `vm.max_map_count=262144` to `/etc/sysctl.conf`.
+- Docker (for building app images), e.g. Rancher Desktop
 
 ## Deploy
+
+Apply the base resources (namespace, APM secret, azure-devops-agent):
 
 ```sh
 kubectl apply -k .
 ```
 
-Check rollout status:
+Build and deploy the demo apps:
 
 ```sh
-kubectl rollout status statefulset/elasticsearch -n elastic-stack
-kubectl rollout status deployment/kibana -n elastic-stack
-kubectl rollout status deployment/apm-server -n elastic-stack
+task start:apps            # all apps
+task start:apps:<name>     # one app, e.g. task start:apps:java
 ```
 
-Get the external addresses:
+Check status:
 
 ```sh
-kubectl get svc -n elastic-stack
+kubectl get pods -n elastic-stack
 ```
 
 ## Scripts and Task runner
 
-Start, stop, or check the stack with the provided scripts or the
+Start, stop, or check with the provided scripts or the
 [Taskfile](https://taskfile.dev):
 
 | Command                          | Action                                          |
 |----------------------------------|-------------------------------------------------|
-| `./start.sh` or `.\start.ps1`    | Deploy and wait for readiness, print endpoints  |
+| `./start.sh` or `.\start.ps1`    | Apply base resources and print endpoints        |
 | `./start.sh stop` or `.\start.ps1 -Action stop` | Remove the stack                 |
 | `./start.sh status` or `.\start.ps1 -Action status` | Show pods and services |
 | `task start` / `task stop` / `task status` / `task logs` | Task runner equivalents |
 | `task start:apps` | Build and deploy all demo apps |
-| `task start:apps:<name>` | Build and deploy one demo app, e.g. `task start:apps:java` |
+| `task start:apps:<name>` | Build and deploy one demo app |
 | `task test` | Run the Jest + Playwright test suite as a Kubernetes Job |
 | `task start:heartbeat` | Deploy the Heartbeat uptime-monitor CronJob (every 45 min) |
 | `task run:heartbeat` | Trigger one heartbeat check pass immediately |
 | `task stop:heartbeat` | Remove the Heartbeat CronJob |
-| `task start:otel` | Deploy the OpenTelemetry Collector + Instrumentation CR |
+| `task start:otel` | Deploy the OpenTelemetry Collector |
 | `task stop:otel` | Remove the OpenTelemetry resources |
-| `task start:filebeat` | Deploy the Filebeat DaemonSet (container logs → Elasticsearch) |
+| `task start:filebeat` | Deploy the Filebeat DaemonSet |
 | `task stop:filebeat` | Remove the Filebeat DaemonSet |
 
-Set `TIMEOUT` to adjust the rollout wait (default `300` seconds).
+Set `TIMEOUT` to adjust rollout waits (default `300` seconds).
 
-## Access
+## Demo apps
 
-- **Kibana:** `http://<kibana-external-ip>:5601`
-- **Elasticsearch:** `http://<elasticsearch-external-ip>:9200`
-- **APM Server:** `http://<apm-server-external-ip>:8200`
+Each server-side app's `k8s.yaml` configures the Elastic APM agent with:
 
-Point APM agents at the APM Server, e.g. for an Elastic APM agent:
-
+```yaml
+env:
+  - name: ELASTIC_APM_SERVER_URL
+    value: "https://my-observability-project-d54a32.apm.europe-west2.gcp.elastic.cloud:443"
+  - name: ELASTIC_APM_API_KEY
+    valueFrom:
+      secretKeyRef:
+        name: elastic-apm
+        key: token
 ```
-server_url: http://<apm-server-external-ip>:8200
-service_name: <your-service-name>
-environment: development
-```
 
-## Built-in APM integration
-
-Since 8.15, Elasticsearch ships the `apm-data` plugin (enabled here via
-`xpack.apm_data.enabled: true` in
-`elasticsearch/00-configmap.yaml`), which installs the APM index templates
-and ingest pipelines inside Elasticsearch. The small `apm-server` Deployment
-is still required as the endpoint that APM agents report to; it writes
-directly into the APM data streams managed by Elasticsearch.
-
-The APM Server also serves the browser-based RUM agent (`apm-server.rum.enabled`
-in `apm-server/01-configmap.yaml`), so the React app's requests can be traced
-from the browser through the backend apps.
+The React app uses **EDOT Browser** (OpenTelemetry RUM) because the classic
+`@elastic/apm-rum` agent is not available on Elastic Cloud Serverless. It
+exports OTLP over HTTP to the same-origin `/v1/` path, which nginx
+(`apps/react/nginx.conf`) proxies to the project's **Managed OTLP Endpoint**
+(`https://my-observability-project-d54a32.ingest.europe-west2.gcp.elastic.cloud:443`),
+injecting the OTLP API key on the server side. Browser telemetry then appears
+in **APM → Services** (service `react-app`) and **Discover**.
 
 ## Tests
 
 A TypeScript test suite lives in `tests/` (Jest for API/integration checks,
-Playwright for browser checks). It is designed to run inside the cluster as
-a Kubernetes Job against the in-cluster services:
+Playwright for browser checks). It runs inside the cluster as a Kubernetes Job:
 
 ```sh
 task test
@@ -115,27 +125,19 @@ This builds the `tests/` image, applies `tests/k8s.yaml` as the `apm-tests`
 Job in the `elastic-stack` namespace, waits for completion, and prints the
 logs. The suite asserts:
 
-- Elasticsearch, Kibana and APM Server are up and healthy
+- Elastic Cloud APM and Elasticsearch endpoints respond to the configured API keys
 - Every demo app serves its pages, `/slow` responses, and `/error` HTTP 500s
-- APM data (trace/error indices) is actually ingested into Elasticsearch
-- The Kibana UI loads and reports `available` status
+- APM data is ingested (indexed) in Elasticsearch when the ES API key has
+  privileges; otherwise those assertions are **skipped**
 - The React (RUM) app proxies requests to the backend apps and produces
   distributed traces shared between `react-app` and the backend services
 
-After a run, check results with:
+Endpoints and API keys are configurable via environment variables (defaults in
+`tests/src/config.ts` and `tests/k8s.yaml`). After a run:
 
 ```sh
 kubectl get job/apm-tests -n elastic-stack
 kubectl logs job/apm-tests -n elastic-stack
-```
-
-All endpoints are configurable via environment variables (defaults are the
-in-cluster service DNS names, see `tests/src/config.ts`), so the suite can
-also run against exposed addresses:
-
-```sh
-ELASTICSEARCH_URL=http://localhost:9200 KIBANA_URL=http://localhost:5601 \
-JAVA_APP_URL=http://localhost:8080 ... npm test
 ```
 
 Run locally (from `tests/`) with `npm install` (plus
@@ -145,23 +147,29 @@ Run locally (from `tests/`) with `npm install` (plus
 ## Heartbeat (uptime monitors)
 
 [Heartbeat](https://www.elastic.co/guide/en/beats/heartbeat/8.19/index.html)
-is a lightweight daemon that periodically checks service availability. A
-Heartbeat **CronJob** lives in `heartbeat/` and runs every 45 minutes,
-checking every server-side demo app (the React app is excluded). Each run is
-a single pass over all monitors (`heartbeat.run_once: true`) that then exits.
+runs as a **CronJob** every 45 minutes, checking every server-side demo app
+(the React app is excluded) plus the azure-devops-agent health sidecar. Each
+run is a single pass over all monitors (`heartbeat.run_once: true`) that then
+exits.
 
 | Monitor      | URL(s)                   | Expected status |
 |--------------|--------------------------|-----------------|
 | `<app>-http` | `/<app>-app:<port>/`, `/<app>-app:<port>/slow` | 200 |
 | `<app>-error` | `/<app>-app:<port>/error` | 500 |
 
-Each monitor sets `service.name` to the app's APM service name, so the
-Uptime monitor links to the app's APM service in Kibana. Uptime results are
-shipped to Elasticsearch (`heartbeat-*` indices) and appear in
-**Observability → Uptime**.
+Uptime results are shipped to the **cloud Elasticsearch** (`heartbeat-*`
+indices) and appear in **Observability → Uptime** in cloud Kibana. The output
+is authenticated with an ES API key; libbeat needs the raw `id:key` form (it
+base64-encodes it internally — passing pre-encoded base64 yields `401 invalid
+ApiKey value`).
+
+> **Note:** The serverless project does not grant the ES privileges Heartbeat
+> needs (`monitor` + `heartbeat-*` write), so Heartbeat is being **replaced by
+> a Synthetics project** (below). The CronJob is kept until the migration is
+> complete.
 
 ```sh
-task start:heartbeat   # replace the old Deployment with the CronJob
+task start:heartbeat   # deploy the CronJob
 task run:heartbeat     # trigger one check pass now (manual Job)
 task stop:heartbeat    # remove the CronJob
 ```
@@ -170,66 +178,70 @@ Edit `heartbeat/heartbeat.yml` (also embedded in the ConfigMap in
 `heartbeat/k8s.yaml`) to change the endpoints; adjust the cadence in the
 CronJob `schedule` (default `*/45 * * * *`).
 
+## Synthetics project monitors (replaces Heartbeat)
+
+The uptime monitors are migrated to a [Synthetics project](https://www.elastic.co/docs/solutions/observability/synthetics/create-monitors-with-projects)
+so they can run against the serverless project. The monitors are lightweight
+HTTP checks defined in `synthetics/lightweight/apm-demo.yaml` and run on a
+**Private Location** (`apm-demo-private`), i.e. an Elastic Agent deployed in
+this cluster, so they can reach the in-cluster app services.
+
+### 1. Create the private location and deploy the agent
+
+1. Create the private location in Kibana: **Observability → Synthetics →
+   Settings → Private Locations → Create location** named `apm-demo-private`
+   (this creates an agent policy with the Synthetics integration).
+2. From **Fleet** grab the enrollment token for that policy and the Fleet
+   server URL, then create the enrollment secret and deploy the agent:
+
+   ```sh
+   kubectl create secret generic fleet-enrollment -n elastic-stack \
+     --from-literal=FLEET_URL=<fleet-server-url> \
+     --from-literal=FLEET_ENROLLMENT_TOKEN=<enrollment-token>
+   task start:synthetics-agent
+   ```
+
+   The agent DaemonSet lives in `synthetics/agent/` and runs the
+   `elastic-agent` image with `NET_RAW`/`SETUID` capabilities. Adjust the image
+   version to one supported by the project's Fleet if enrollment fails.
+
+### 2. Push the monitors
+
+```sh
+export SYNTHETICS_API_KEY=<project api key from Synthetics > Settings > Project API keys>
+task push:synthetics
+```
+
+This pushes the 22 lightweight monitors (`synthetics/lightweight/apm-demo.yaml`)
+to the `apm-demo` project on the private location. Monitors then run from the
+agent and results appear in **Observability → Synthetics**. Heartbeat's CronJob
+can be removed once they are running:
+
+```sh
+task stop:heartbeat
+```
+
+Synthetics schedules must be one of `1,2,3,5,10,15,20,30,60,120,240` minutes.
+
 ## OpenTelemetry (auto-instrumentation)
 
 The demo apps report traces twice: through their original Elastic APM agents
 and through **OpenTelemetry** via the [OpenTelemetry Operator](https://opentelemetry.io/docs/kubernetes/operator/)
-plus an upstream `otel/opentelemetry-collector-contrib`. The collector forwards
-the OTLP traces to the APM Server, which accepts OTLP natively on port 8200
-(anonymous, since this dev stack runs without security).
-
-### Install the Operator (Helm)
-
-The Operator injects agents automatically, and it requires
-[cert-manager](https://cert-manager.io) for its webhooks:
-
-```sh
-# 1. cert-manager
-helm repo add jetstack https://charts.jetstack.io
-helm install cert-manager jetstack/cert-manager \
-  --namespace cert-manager --create-namespace \
-  --set crds.enabled=true
-
-# 2. OpenTelemetry Operator
-helm repo add open-telemetry https://open-telemetry.github.io/opentelemetry-helm-charts
-helm install opentelemetry-operator open-telemetry/opentelemetry-operator \
-  --namespace opentelemetry-operator-system --create-namespace
-```
-
-### Deploy collector + Instrumentation CR
+plus an upstream `otel/opentelemetry-collector-contrib`. The collector
+forwards OTLP traces to the **cloud APM Server** with an `ApiKey` header.
 
 ```sh
 kubectl apply -f opentelemetry/collector.yaml        # collector + Service
-kubectl apply -f opentelemetry/instrumentation.yaml  # Instrumentation CR
+kubectl apply -f opentelemetry/instrumentation.yaml  # Instrumentation CR (optional)
 ```
 
-- `opentelemetry/collector.yaml` runs `otel/opentelemetry-collector-contrib`
-  with an OTLP receiver (gRPC `4317`, HTTP `4318`), a batch processor, and an
-  `otlp_grpc/apm` exporter pointing at `apm-server:8200` (`tls.insecure: true`).
-- `opentelemetry/instrumentation.yaml` defines the `otel-instrumentation`
-  resource that the injection annotations reference. Agents export over
-  `http/protobuf` to `http://otel-collector:4318` and sample every trace.
-
-### Annotate workloads
-
-Add an `instrumentation.opentelemetry.io/inject-*` annotation to a Deployment
-pod template to have the Operator inject the matching agent:
-
-| App            | Annotation                                        |
-|----------------|---------------------------------------------------|
-| java-app       | `instrumentation.opentelemetry.io/inject-java`    |
-| spring-boot-app| `instrumentation.opentelemetry.io/inject-java`    |
-| openliberty-app| `instrumentation.opentelemetry.io/inject-java`    |
-| expressjs-app  | `instrumentation.opentelemetry.io/inject-nodejs`  |
-| python-app     | `instrumentation.opentelemetry.io/inject-python`  |
-| csharp-app     | `instrumentation.opentelemetry.io/inject-dotnet`  |
-
-Each annotation value is `<namespace>/<instrumentation-name>`, i.e.
-`elastic-stack/otel-instrumentation`. The Operator injects an init container
-with the agent plus `OTEL_EXPORTER_OTLP_ENDPOINT` and friends; traces then flow
-`app -> otel-collector -> apm-server -> Elasticsearch` and appear in
-**APM → Services** with `agent.name` `opentelemetry/...` alongside the Elastic
-agents' traces.
+- `opentelemetry/collector.yaml` runs an OTLP receiver (gRPC `4317`, HTTP
+  `4318`), a batch processor, and an `otlp_grpc/apm` exporter pointing at
+  `my-observability-project-d54a32.apm.europe-west2.gcp.elastic.cloud:443`
+  with `Authorization: ApiKey <apm-key>`.
+- Instrumented apps' OTel agents export to `http://otel-collector:4318`;
+  traces then flow `app -> otel-collector -> cloud APM -> cloud ES` and appear
+  in **APM → Services** with `agent.name` `opentelemetry/...`.
 
 The **react-app** (browser RUM) and **golang-app** (no auto-instrumentation
 image exists for Go) are intentionally left unannotated.
@@ -237,32 +249,11 @@ image exists for Go) are intentionally left unannotated.
 ## Filebeat (container logs)
 
 [Filebeat](https://www.elastic.co/guide/en/beats/filebeat/8.19/index.html) runs
-as a **DaemonSet** in `kube-system` (`filebeat/`) and ships every container's
-stdout/stderr to Elasticsearch (`filebeat-*` indices), visible in
-**Observability → Logs**.
-
-It uses hints-based autodiscover: pod annotations with the `co.elastic.logs`
-prefix control parsing per pod. The default is a raw `container` input, so
-enabling logging explicitly is optional. For structured parsing of a workload
-like nginx, annotate its pod template:
-
-```yaml
-annotations:
-  co.elastic.logs/enabled: "true"
-  co.elastic.logs/module: "nginx"
-  co.elastic.logs/fileset.stdout: "access"
-  co.elastic.logs/fileset.stderr: "error"
-```
-
-See `filebeat/example-nginx.yaml` for a complete example. Since Filebeat runs in
-`kube-system`, its Elasticsearch output uses the fully-qualified service DNS
-name `elasticsearch.elastic-stack.svc.cluster.local:9200` (no credentials, as
-security is disabled in this dev stack).
-
-```sh
-task start:filebeat   # deploy the Filebeat DaemonSet + RBAC + ConfigMap
-task stop:filebeat    # remove it
-```
+as a **DaemonSet** in `kube-system` (`filebeat/`). It is **left unchanged**
+from the self-hosted setup and still points at the removed in-cluster
+Elasticsearch (`elasticsearch.elastic-stack.svc.cluster.local:9200`), so it
+currently ships no data. Reconfigure its output to the cloud ES (with an API
+key) if container-log shipping is wanted.
 
 ## Cleanup
 
@@ -272,12 +263,9 @@ kubectl delete -k .
 
 ## Notes
 
-- This is a **development configuration**: `xpack.security` is disabled in
-  Elasticsearch so services are reachable over plain HTTP without
-  credentials. Enable security and TLS before any production use.
-- Elasticsearch uses a 10Gi PVC via `volumeClaimTemplates`. Provide a
-  `StorageClass` that supports `ReadWriteOnce` (or customize it).
-- The Elasticsearch StatefulSet runs as UID `1000` (`fsGroup`) and uses
-  `securityContext` accordingly.
-- To scale Elasticsearch, add nodes to `discovery.seed_hosts`,
-  `cluster.initial_master_nodes`, and `replicas` in the StatefulSet.
+- The APM "secret token" provided by the Elastic Cloud deployment is actually
+  an **API key**; apps must use `ELASTIC_APM_API_KEY` (an `Authorization:
+  ApiKey` header), not `ELASTIC_APM_SECRET_TOKEN`.
+- Cluster-resource demands are modest; on small dev clusters (e.g. Rancher
+  Desktop with 2 vCPU/2 GB) deploy the JVM apps one at a time to avoid CPU
+  starvation and liveness crash-loops.

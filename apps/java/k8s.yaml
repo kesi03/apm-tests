@@ -45,11 +45,16 @@ spec:
           containerPort: 8080
         env:
         - name: ELASTIC_APM_SERVER_URL
-          value: http://apm-server:8200
+          value: https://my-observability-project-d54a32.apm.europe-west2.gcp.elastic.cloud:443
         - name: ELASTIC_APM_SERVICE_NAME
           value: java-app
         - name: ELASTIC_APM_ENVIRONMENT
           value: development
+        - name: ELASTIC_APM_API_KEY
+          valueFrom:
+            secretKeyRef:
+              name: elastic-apm
+              key: token
         resources:
           requests:
             memory: 256Mi

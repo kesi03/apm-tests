@@ -1,0 +1,13 @@
+{
+  "name": "apm-demo-synthetics",
+  "private": true,
+  "version": "1.0.0",
+  "description": "Synthetics project monitors for the Elastic APM demo apps (replaces the Heartbeat CronJob).",
+  "scripts": {
+    "push": "elastic-synthetics push --auth \"$SYNTHETICS_API_KEY\"",
+    "locations": "elastic-synthetics locations"
+  },
+  "dependencies": {
+    "@elastic/synthetics": "1.25.0"
+  }
+}

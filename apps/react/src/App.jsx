@@ -1,5 +1,7 @@
 import { Component, useState } from 'react'
-import { apm } from '@elastic/apm-rum'
+import { context, trace, SpanStatusCode } from '@opentelemetry/api'
+
+const tracer = trace.getTracer('react-app')
 
 const BACKENDS = [
   { name: 'java', label: 'Java' },
@@ -22,7 +24,10 @@ class ErrorBoundary extends Component {
   }
 
   componentDidCatch(error) {
-    apm.captureError(error)
+    const span = tracer.startSpan('error-boundary')
+    span.recordException(error)
+    span.setStatus({ code: SpanStatusCode.ERROR })
+    span.end()
   }
 
   render() {
@@ -42,11 +47,11 @@ function SendTransaction() {
   const [message, setMessage] = useState('')
   const handleClick = () => {
     setMessage('')
-    const tx = apm.startTransaction('button-click', 'custom')
-    const span = tx.startSpan('do-some-work', 'custom')
+    const parent = tracer.startSpan('button-click')
+    const span = tracer.startSpan('do-some-work', undefined, trace.setSpan(context.active(), parent))
     setTimeout(() => {
-      span?.end()
-      tx.end()
+      span.end()
+      parent.end()
       setMessage('Custom transaction sent to APM Server')
     }, 300)
   }
@@ -68,7 +73,7 @@ function ProxyCalls() {
 
   const callBackend = async (name) => {
     setPending(name)
-    const tx = apm.startTransaction(`proxy-call-${name}`, 'custom')
+    const span = tracer.startSpan(`proxy-call-${name}`)
     try {
       const res = await fetch(`/proxy/${name}/`, { headers: { Accept: 'text/plain' } })
       const text = await res.text()
@@ -76,7 +81,7 @@ function ProxyCalls() {
     } catch (err) {
       setResults((prev) => ({ ...prev, [name]: { status: 'ERR', text: String(err) } }))
     } finally {
-      tx?.end()
+      span.end()
       setPending(null)
     }
   }
@@ -109,7 +114,7 @@ export default function App() {
     <ErrorBoundary>
       <main>
         <h1>React + Elastic APM RUM</h1>
-        <p>This page is instrumented with the Elastic APM RUM agent.</p>
+        <p>This page is instrumented with the EDOT Browser (OpenTelemetry RUM) agent.</p>
         <SendTransaction />
         <ProxyCalls />
         {showError ? (

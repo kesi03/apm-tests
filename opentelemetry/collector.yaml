@@ -9,8 +9,8 @@ metadata:
 data:
   config.yaml: |
     # OpenTelemetry Collector: receives OTLP traces from auto-instrumented
-    # workloads and forwards them to the Elastic APM Server, which accepts
-    # OTLP natively on port 8200 (no auth required in this dev stack).
+    # workloads and forwards them to Elastic Cloud's managed APM Server,
+    # which accepts OTLP natively on port 443. Auth is the APM API key.
     receivers:
       otlp:
         protocols:
@@ -24,9 +24,9 @@ data:
 
     exporters:
       otlp_grpc/apm:
-        endpoint: apm-server:8200
-        tls:
-          insecure: true
+        endpoint: my-observability-project-d54a32.apm.europe-west2.gcp.elastic.cloud:443
+        headers:
+          Authorization: ApiKey QkR1dzRwOEI0a2lFamVIMU9LeGI6b1RsV3BuT1NNcEYwWGpYY0dvWGgzUQ==
 
     extensions:
       health_check:

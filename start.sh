@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 #
-# Start / stop the Elastic Stack (Elasticsearch + Kibana + APM Server)
-# deployed by the kustomization in this repository.
+# Start / stop the shared resources (namespace, secrets, agents) deployed by
+# the kustomization in this repository. Elastic APM uses Elastic Cloud.
 #
 # Usage:
 #   ./start.sh          # deploy and wait for readiness
@@ -30,17 +30,8 @@ usage() {
 }
 
 start_stack() {
-  echo "Deploying Elastic Stack (Elasticsearch, Kibana, APM Server)..."
+  echo "Deploying shared resources (namespace, secrets, agents)..."
   kubectl apply -k "$ROOT_DIR"
-
-  echo "Waiting for Elasticsearch..."
-  kubectl rollout status statefulset/elasticsearch -n "$NAMESPACE" --timeout="${TIMEOUT}s"
-
-  echo "Waiting for Kibana..."
-  kubectl rollout status deployment/kibana -n "$NAMESPACE" --timeout="${TIMEOUT}s"
-
-  echo "Waiting for APM Server..."
-  kubectl rollout status deployment/apm-server -n "$NAMESPACE" --timeout="${TIMEOUT}s"
 
   print_endpoints
 }
@@ -50,23 +41,9 @@ print_endpoints() {
   echo "==== Services (namespace: ${NAMESPACE}) ===="
   kubectl get svc -n "$NAMESPACE"
   echo
-
-  for entry in "elasticsearch:9200" "kibana:5601" "apm-server:8200"; do
-    svc="${entry%%:*}"
-    port="${entry##*:}"
-    lb="$(kubectl get svc "$svc" -n "$NAMESPACE" \
-      -o jsonpath='{.status.loadBalancer.ingress[0].ip}' 2>/dev/null || true)"
-    if [ -z "$lb" ]; then
-      lb="$(kubectl get svc "$svc" -n "$NAMESPACE" \
-        -o jsonpath='{.status.loadBalancer.ingress[0].hostname}' 2>/dev/null || true)"
-    fi
-    if [ -n "$lb" ]; then
-      echo "  http://${lb}:${port}  (${svc})"
-    else
-      echo "  ${svc}: no external IP yet. Try:"
-      echo "    kubectl port-forward -n ${NAMESPACE} svc/${svc} ${port}"
-    fi
-  done
+  echo "==== Elastic Cloud endpoints ===="
+  echo "  APM:           https://my-observability-project-d54a32.apm.europe-west2.gcp.elastic.cloud:443"
+  echo "  Elasticsearch: https://my-observability-project-d54a32.es.europe-west2.gcp.elastic.cloud:443"
   echo
 }
 

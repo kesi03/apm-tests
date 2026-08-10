@@ -1,0 +1,78 @@
+# Elastic Agent (Fleet mode) running the Synthetics integration as the
+# "apm-demo-private" Private Location, so lightweight monitors can reach the
+# in-cluster demo app services (java-app:8080, etc.).
+#
+# Before deploying, create the Fleet enrollment secret with the values from
+# Kibana (Fleet -> Enrollment tokens and Fleet settings -> Fleet server URL):
+#
+#   kubectl create secret generic fleet-enrollment -n elastic-stack \
+#     --from-literal=FLEET_URL=<fleet-server-url> \
+#     --from-literal=FLEET_ENROLLMENT_TOKEN=<enrollment-token>
+#
+# Only lightweight (HTTP/TCP/ICMP) monitors run on this agent. If browser
+# monitors are added later, switch the image to
+# docker.elastic.co/elastic-agent/elastic-agent-complete:<version>.
+#
+# Do NOT override command/args (the image entrypoint /usr/local/bin/
+# docker-entrypoint handles FLEET_ENROLL) and do NOT mount a volume over
+# /usr/share/elastic-agent/data: the `elastic-agent` launcher is a symlink
+# into that dir, and both mistakes break startup with
+# "elastic-agent: executable file not found".
+apiVersion: apps/v1
+kind: DaemonSet
+metadata:
+  name: elastic-agent
+  namespace: elastic-stack
+  labels:
+    app: elastic-agent
+    app.kubernetes.io/part-of: elastic-apm-demo
+spec:
+  selector:
+    matchLabels:
+      app: elastic-agent
+  template:
+    metadata:
+      labels:
+        app: elastic-agent
+        app.kubernetes.io/part-of: elastic-apm-demo
+    spec:
+      serviceAccountName: elastic-agent
+      automountServiceAccountToken: true
+      hostNetwork: false
+      securityContext:
+        runAsUser: 0
+      containers:
+        - name: agent
+          # Adjust the version to one supported by the serverless project's Fleet.
+          image: docker.elastic.co/elastic-agent/elastic-agent:9.5.0
+          imagePullPolicy: IfNotPresent
+          env:
+            - name: FLEET_ENROLL
+              value: "1"
+            - name: FLEET_URL
+              valueFrom:
+                secretKeyRef:
+                  name: fleet-enrollment
+                  key: FLEET_URL
+            - name: FLEET_ENROLLMENT_TOKEN
+              valueFrom:
+                secretKeyRef:
+                  name: fleet-enrollment
+                  key: FLEET_ENROLLMENT_TOKEN
+            - name: STATE_PATH
+              value: /usr/share/elastic-agent/state
+          securityContext:
+            capabilities:
+              add: ["NET_RAW", "SETUID"]
+          resources:
+            requests:
+              memory: 256Mi
+              cpu: 100m
+            limits:
+              memory: 1Gi
+          volumeMounts:
+            - name: state
+              mountPath: /usr/share/elastic-agent/state
+      volumes:
+        - name: state
+          emptyDir: {}

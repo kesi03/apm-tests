@@ -9,20 +9,29 @@ export interface RequestOptions {
   timeout?: number;
   method?: string;
   body?: string;
+  headers?: Record<string, string>;
 }
 
 export async function request(
   url: string,
-  { timeout = 5000, method = 'GET', body }: RequestOptions = {}
+  { timeout = 5000, method = 'GET', body, headers }: RequestOptions = {}
 ): Promise<HttpResponse> {
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), timeout);
+  const requestHeaders: Record<string, string> = {};
+  if (body !== undefined) {
+    requestHeaders['content-type'] = 'application/json';
+  }
+  if (headers) {
+    Object.assign(requestHeaders, headers);
+  }
   try {
     const response = await fetch(url, {
       signal: controller.signal,
       redirect: 'follow',
       method,
-      ...(body !== undefined ? { headers: { 'content-type': 'application/json' }, body } : {})
+      headers: requestHeaders,
+      ...(body !== undefined ? { body } : {})
     });
     const text = await response.text();
     let bodyValue: unknown = text;

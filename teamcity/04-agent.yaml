@@ -1,0 +1,54 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: teamcity-agent
+  namespace: elastic-stack
+  labels:
+    app: teamcity-agent
+    app.kubernetes.io/part-of: elastic-stack
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: teamcity-agent
+  template:
+    metadata:
+      labels:
+        app: teamcity-agent
+        app.kubernetes.io/part-of: elastic-stack
+      annotations:
+        co.elastic.logs/enabled: "true"
+    spec:
+      containers:
+        - name: teamcity-agent
+          image: jetbrains/teamcity-agent:latest
+          imagePullPolicy: IfNotPresent
+          securityContext:
+            runAsUser: 0
+          env:
+            - name: SERVER_URL
+              value: http://teamcity-server:8111
+            - name: AGENT_NAME
+              value: k8s-teamcity-agent
+          volumeMounts:
+            - name: docker-sock
+              mountPath: /var/run/docker.sock
+          resources:
+            requests:
+              memory: 512Mi
+              cpu: 250m
+            limits:
+              memory: 2Gi
+          readinessProbe:
+            exec:
+              command:
+                - test
+                - -f
+                - /data/teamcity_agent/conf/buildAgent.properties
+            initialDelaySeconds: 30
+            periodSeconds: 10
+      volumes:
+        - name: docker-sock
+          hostPath:
+            path: /var/run/docker.sock
+            type: Socket

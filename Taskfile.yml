@@ -1,7 +1,7 @@
 # Taskfile: task runner for the Elastic Stack on Kubernetes.
 # Requires: kubectl and task (https://taskfile.dev).
 #
-#   task start   deploy Elasticsearch + Kibana + APM Server, wait for readiness
+#   task start   deploy shared resources (namespace, secrets, agents)
 #   task stop    remove the stack
 #   task status  show stack pods and services
 #   task logs    tail stack logs
@@ -13,6 +13,9 @@
 #   task stop:otel        remove the OpenTelemetry resources
 #   task start:filebeat   deploy the Filebeat DaemonSet (docker/k8s logs -> Elasticsearch)
 #   task stop:filebeat    remove the Filebeat DaemonSet
+#   task push:synthetics  push the Synthetics project monitors to Elastic Cloud (SYNTHETICS_API_KEY required)
+#   task start:synthetics-agent  deploy the Private-Location Elastic Agent DaemonSet
+#   task stop:synthetics-agent   remove the Private-Location Elastic Agent DaemonSet
 #   task build:agent AZDO_PAT=...  build the Azure DevOps agent image and store the PAT in the k8s secret
 version: '3'
 
@@ -20,6 +23,8 @@ vars:
   NAMESPACE: elastic-stack
   TIMEOUT: '300'
   IMAGE_PREFIX: elastic-apm-demo
+  KB_URL: https://my-observability-project-d54a32.kb.europe-west2.gcp.elastic.cloud:443
+  SYNTHETICS_API_KEY: '{{.SYNTHETICS_API_KEY | default "$SYNTHETICS_API_KEY"}}'
   APPS:
     - java
     - spring-boot
@@ -37,23 +42,19 @@ tasks:
       - task: start
 
   start:
-    desc: Deploy Elasticsearch, Kibana and APM Server, then wait for readiness
+    desc: Deploy shared resources (namespace, secrets, agents) and show endpoints
     cmds:
       - kubectl apply -k .
-      - kubectl rollout status statefulset/elasticsearch -n {{.NAMESPACE}} --timeout={{.TIMEOUT}}s
-      - kubectl rollout status deployment/kibana -n {{.NAMESPACE}} --timeout={{.TIMEOUT}}s
-      - kubectl rollout status deployment/apm-server -n {{.NAMESPACE}} --timeout={{.TIMEOUT}}s
       - task: endpoints
 
   endpoints:
-    desc: Show services and access fallbacks
+    desc: Show services and Elastic Cloud endpoints
     cmds:
       - kubectl get svc -n {{.NAMESPACE}}
       - echo
-      - echo "If a service has no EXTERNAL-IP, access it with:"
-      - echo "  kubectl port-forward -n {{.NAMESPACE}} svc/kibana 5601"
-      - echo "  kubectl port-forward -n {{.NAMESPACE}} svc/elasticsearch 9200"
-      - echo "  kubectl port-forward -n {{.NAMESPACE}} svc/apm-server 8200"
+      - echo "Elastic Cloud endpoints:"
+      - echo "  APM:           https://my-observability-project-d54a32.apm.europe-west2.gcp.elastic.cloud:443"
+      - echo "  Elasticsearch: https://my-observability-project-d54a32.es.europe-west2.gcp.elastic.cloud:443"
 
   stop:
     desc: Remove the Elastic Stack from the cluster
@@ -221,3 +222,32 @@ tasks:
       - kubectl delete -f filebeat/02-daemonset.yaml --ignore-not-found=true
       - kubectl delete -f filebeat/01-configmap.yaml --ignore-not-found=true
       - kubectl delete -f filebeat/00-rbac.yaml --ignore-not-found=true
+
+  push:synthetics:
+    desc: Push the Synthetics project monitors to Elastic Cloud (requires SYNTHETICS_API_KEY)
+    dir: synthetics
+    cmds:
+      - cmd: |
+          [ -n "{{.SYNTHETICS_API_KEY}}" ] || { echo "SYNTHETICS_API_KEY is not set (export it first)"; exit 1; }
+          npx --yes @elastic/synthetics@latest push --auth "{{.SYNTHETICS_API_KEY}}" --url {{.KB_URL}}
+
+  synthetics:locations:
+    desc: List Synthetics locations (managed + private) for the project
+    dir: synthetics
+    cmds:
+      - cmd: |
+          [ -n "{{.SYNTHETICS_API_KEY}}" ] || { echo "SYNTHETICS_API_KEY is not set (export it first)"; exit 1; }
+          npx --yes @elastic/synthetics@latest locations --url {{.KB_URL}} --auth "{{.SYNTHETICS_API_KEY}}"
+
+  start:synthetics-agent:
+    desc: Deploy the Private-Location Elastic Agent (needs secret fleet-enrollment, see synthetics/agent/)
+    cmds:
+      - kubectl apply -f synthetics/agent/00-rbac.yaml
+      - kubectl apply -f synthetics/agent/01-daemonset.yaml
+      - kubectl rollout status daemonset/elastic-agent -n {{.NAMESPACE}} --timeout={{.TIMEOUT}}s
+
+  stop:synthetics-agent:
+    desc: Remove the Private-Location Elastic Agent
+    cmds:
+      - kubectl delete -f synthetics/agent/01-daemonset.yaml --ignore-not-found=true
+      - kubectl delete -f synthetics/agent/00-rbac.yaml --ignore-not-found=true
