@@ -13,6 +13,8 @@ const port = process.env.PORT || 3000;
 
 const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 
+app.use(express.json());
+
 app.get('/', (req, res) => {
   res.send('Hello from Express.js (Elastic APM)');
 });
@@ -35,6 +37,40 @@ app.get('/custom', (req, res) => {
     tx.end();
     res.send('Custom span captured');
   }, 500);
+});
+
+app.post('/chain', async (req, res) => {
+  const chain = req.body;
+  const traceparent = req.headers['traceparent'];
+
+  const span = apm.startSpan('express-chain-step', 'custom');
+  try {
+    // mark this member completed
+    const member = chain.chain.members.find(m => m.name === 'expressjs');
+    if (member) member.completed = true;
+
+    // find next member (deterministic by order)
+    const idx = chain.chain.members.findIndex(m => m.name === 'expressjs');
+    const next = chain.chain.members[idx + 1];
+
+    if (next) {
+      // forward payload, propagating traceparent
+      await fetch(next.url, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          ...(traceparent ? { traceparent } : {})
+        },
+        body: JSON.stringify(chain)
+      });
+    }
+
+    res.json(chain);
+  } catch (err) {
+    throw err;
+  } finally {
+    if (span) span.end();
+  }
 });
 
 app.get('/error', (req, res) => {

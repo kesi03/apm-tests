@@ -23,6 +23,7 @@ public class App {
         server.createContext("/greet", new GreetHandler());
         server.createContext("/slow", new SlowHandler());
         server.createContext("/error", new ErrorHandler());
+        server.createContext("/chain", new ChainHandler());
 
         server.setExecutor(Executors.newFixedThreadPool(4));
         server.start();
@@ -113,6 +114,73 @@ public class App {
             Thread.sleep(millis);
         } catch (InterruptedException e) {
             Thread.currentThread().interrupt();
+        }
+    }
+
+    private static final class ChainHandler implements HttpHandler {
+        @Override
+        public void handle(HttpExchange exchange) throws IOException {
+            if (!"POST".equalsIgnoreCase(exchange.getRequestMethod())) {
+                respondError(exchange, 405, "Method Not Allowed");
+                return;
+            }
+
+            // read body
+            byte[] body = exchange.getRequestBody().readAllBytes();
+            String txt = new String(body);
+
+            com.fasterxml.jackson.databind.ObjectMapper mapper = new com.fasterxml.jackson.databind.ObjectMapper();
+            java.util.Map<String, Object> payload;
+            try {
+                payload = mapper.readValue(txt, java.util.Map.class);
+            } catch (Exception e) {
+                respondError(exchange, 400, "invalid json");
+                return;
+            }
+
+            // mark this member completed
+            java.util.Map<String, Object> chain = (java.util.Map<String, Object>) payload.get("chain");
+            java.util.List<java.util.Map<String, Object>> members = (java.util.List<java.util.Map<String, Object>>) chain.get("members");
+            int idx = -1;
+            for (int i = 0; i < members.size(); i++) {
+                java.util.Map<String, Object> m = members.get(i);
+                if ("java".equals(m.get("name"))) {
+                    m.put("completed", true);
+                    idx = i;
+                    break;
+                }
+            }
+
+            // forward to next
+            if (idx >= 0 && idx + 1 < members.size()) {
+                java.util.Map<String, Object> next = members.get(idx + 1);
+                String nextUrl = (String) next.get("url");
+                try {
+                    java.net.URL url = new java.net.URL(nextUrl);
+                    java.net.HttpURLConnection conn = (java.net.HttpURLConnection) url.openConnection();
+                    conn.setRequestMethod("POST");
+                    conn.setDoOutput(true);
+                    conn.setRequestProperty("Content-Type", "application/json");
+                    String traceparent = exchange.getRequestHeaders().getFirst("traceparent");
+                    if (traceparent != null) conn.setRequestProperty("traceparent", traceparent);
+
+                    String outBody = mapper.writeValueAsString(payload);
+                    try (OutputStream os = conn.getOutputStream()) {
+                        os.write(outBody.getBytes());
+                    }
+                    conn.getResponseCode();
+                } catch (Exception e) {
+                    // ignore in demo
+                }
+            }
+
+            // respond with modified payload
+            byte[] out = new com.fasterxml.jackson.databind.ObjectMapper().writeValueAsBytes(payload);
+            exchange.getResponseHeaders().add("Content-Type", "application/json");
+            exchange.sendResponseHeaders(200, out.length);
+            try (OutputStream os = exchange.getResponseBody()) {
+                os.write(out);
+            }
         }
     }
 }

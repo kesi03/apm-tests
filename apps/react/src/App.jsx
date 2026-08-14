@@ -43,6 +43,71 @@ class ErrorBoundary extends Component {
   }
 }
 
+function randomHex(bytes) {
+  const arr = new Uint8Array(bytes)
+  crypto.getRandomValues(arr)
+  return Array.from(arr).map(b => b.toString(16).padStart(2, '0')).join('')
+}
+
+function StartChain() {
+  const [status, setStatus] = useState('')
+
+  const start = async () => {
+    setStatus('')
+    const traceId = randomHex(16) // 32 hex chars
+    const rootSpan = randomHex(8) // 16 hex chars
+    const traceparent = `00-${traceId}-${rootSpan}-01`
+
+    // Build chain members in deterministic order the backend handlers expect
+    const members = [
+      { name: 'react', id: crypto.randomUUID(), url: '/proxy/react/chain', completed: true },
+      { name: 'expressjs', id: crypto.randomUUID(), url: '/proxy/expressjs/chain', completed: false },
+      { name: 'java', id: crypto.randomUUID(), url: '/proxy/java/chain', completed: false },
+      { name: 'springboot', id: crypto.randomUUID(), url: '/proxy/spring-boot/chain', completed: false },
+      { name: 'openliberty', id: crypto.randomUUID(), url: '/proxy/openliberty/chain', completed: false },
+      { name: 'golang', id: crypto.randomUUID(), url: '/proxy/golang/chain', completed: false },
+      { name: 'csharp', id: crypto.randomUUID(), url: '/proxy/csharp/chain', completed: false },
+      { name: 'python', id: crypto.randomUUID(), url: '/proxy/python/chain', completed: false }
+    ]
+
+    const chainEvent = {
+      event: 'chain',
+      transaction: { id: traceId, rootSpan: rootSpan },
+      chain: { members },
+      timestamp: new Date().toISOString()
+    }
+
+    // create a local span for react step
+    const span = tracer.startSpan('react-chain-step')
+    try {
+      const res = await fetch('/proxy/expressjs/chain', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'traceparent': traceparent
+        },
+        body: JSON.stringify(chainEvent)
+      })
+
+      if (!res.ok) throw new Error(`status ${res.status}`)
+      setStatus('Chain started')
+    } catch (err) {
+      setStatus(`Error: ${String(err)}`)
+    } finally {
+      span.end()
+    }
+  }
+
+  return (
+    <section>
+      <h2>Start deterministic chain</h2>
+      <p>Creates a W3C traceparent and forwards the unified chain to Express.js.</p>
+      <button onClick={start}>Start chain</button>
+      {status && <div>{status}</div>}
+    </section>
+  )
+}
+
 function SendTransaction() {
   const [message, setMessage] = useState('')
   const handleClick = () => {
@@ -115,6 +180,7 @@ export default function App() {
       <main>
         <h1>React + Elastic APM RUM</h1>
         <p>This page is instrumented with the EDOT Browser (OpenTelemetry RUM) agent.</p>
+        <StartChain />
         <SendTransaction />
         <ProxyCalls />
         {showError ? (
