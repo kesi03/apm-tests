@@ -15,7 +15,7 @@ spec:
         image: gcr.io/kaniko-project/executor:latest
         args:
         - "--dockerfile=apps/golang/Dockerfile"
-        - "--context=https://github.com/kesi03/apm-tests.git"
+        - "--context=git://github.com/kesi03/apm-tests.git#main"
         - "--destination=registry:32000/golang-app:latest"
         - "--insecure-registry=registry:32000"
         - "--skip-tls-verify-registry=registry:32000"
