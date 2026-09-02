@@ -23,8 +23,8 @@ spec:
       - name: kaniko
         image: gcr.io/kaniko-project/executor:latest
         args:
-        - "--dockerfile=apps/csharp/Dockerfile"
-        - "--context=dir:///workspace/source"
+        - "--dockerfile=/workspace/source/apps/csharp/Dockerfile"
+        - "--context=dir:///workspace/source/apps/csharp"
         - "--destination=localhost:32000/csharp-app:latest"
         - "--insecure-registry=localhost:32000"
         - "--skip-tls-verify-registry=localhost:32000"

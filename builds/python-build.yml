@@ -23,8 +23,8 @@ spec:
       - name: kaniko
         image: gcr.io/kaniko-project/executor:latest
         args:
-        - "--dockerfile=apps/python/Dockerfile"
-        - "--context=dir:///workspace/source"
+        - "--dockerfile=/workspace/source/apps/python/Dockerfile"
+        - "--context=dir:///workspace/source/apps/python"
         - "--destination=localhost:32000/python-app:latest"
         - "--insecure-registry=localhost:32000"
         - "--skip-tls-verify-registry=localhost:32000"

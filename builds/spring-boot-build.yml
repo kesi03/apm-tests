@@ -23,8 +23,8 @@ spec:
       - name: kaniko
         image: gcr.io/kaniko-project/executor:latest
         args:
-        - "--dockerfile=apps/spring-boot/Dockerfile"
-        - "--context=dir:///workspace/source"
+        - "--dockerfile=/workspace/source/apps/spring-boot/Dockerfile"
+        - "--context=dir:///workspace/source/apps/spring-boot"
         - "--destination=localhost:32000/spring-boot-app:latest"
         - "--insecure-registry=localhost:32000"
         - "--skip-tls-verify-registry=localhost:32000"

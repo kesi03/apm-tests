@@ -23,8 +23,8 @@ spec:
       - name: kaniko
         image: gcr.io/kaniko-project/executor:latest
         args:
-        - "--dockerfile=apps/openliberty/Dockerfile"
-        - "--context=dir:///workspace/source"
+        - "--dockerfile=/workspace/source/apps/openliberty/Dockerfile"
+        - "--context=dir:///workspace/source/apps/openliberty"
         - "--destination=localhost:32000/openliberty-app:latest"
         - "--insecure-registry=localhost:32000"
         - "--skip-tls-verify-registry=localhost:32000"

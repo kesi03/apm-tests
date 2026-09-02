@@ -23,8 +23,8 @@ spec:
       - name: kaniko
         image: gcr.io/kaniko-project/executor:latest
         args:
-        - "--dockerfile=apps/react/Dockerfile"
-        - "--context=dir:///workspace/source"
+        - "--dockerfile=/workspace/source/apps/react/Dockerfile"
+        - "--context=dir:///workspace/source/apps/react"
         - "--destination=localhost:32000/react-app:latest"
         - "--insecure-registry=localhost:32000"
         - "--skip-tls-verify-registry=localhost:32000"
