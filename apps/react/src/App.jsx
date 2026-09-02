@@ -60,14 +60,14 @@ function StartChain() {
 
     // Build chain members in deterministic order the backend handlers expect
     const members = [
-      { name: 'react', id: crypto.randomUUID(), url: '/proxy/react/chain', completed: true },
-      { name: 'expressjs', id: crypto.randomUUID(), url: '/proxy/expressjs/chain', completed: false },
-      { name: 'java', id: crypto.randomUUID(), url: '/proxy/java/chain', completed: false },
-      { name: 'springboot', id: crypto.randomUUID(), url: '/proxy/spring-boot/chain', completed: false },
-      { name: 'openliberty', id: crypto.randomUUID(), url: '/proxy/openliberty/chain', completed: false },
-      { name: 'golang', id: crypto.randomUUID(), url: '/proxy/golang/chain', completed: false },
-      { name: 'csharp', id: crypto.randomUUID(), url: '/proxy/csharp/chain', completed: false },
-      { name: 'python', id: crypto.randomUUID(), url: '/proxy/python/chain', completed: false }
+      { name: 'react', id: crypto.randomUUID(), url: window.location.origin + '/chain', completed: true },
+      { name: 'expressjs', id: crypto.randomUUID(), url: 'http://expressjs-app.elastic-stack.svc.cluster.local:3000/chain', completed: false },
+      { name: 'java', id: crypto.randomUUID(), url: 'http://java-app.elastic-stack.svc.cluster.local:8080/chain', completed: false },
+      { name: 'springboot', id: crypto.randomUUID(), url: 'http://spring-boot-app.elastic-stack.svc.cluster.local:8080/chain', completed: false },
+      { name: 'openliberty', id: crypto.randomUUID(), url: 'http://openliberty-app.elastic-stack.svc.cluster.local:9080/chain', completed: false },
+      { name: 'golang', id: crypto.randomUUID(), url: 'http://golang-app.elastic-stack.svc.cluster.local:8080/chain', completed: false },
+      { name: 'csharp', id: crypto.randomUUID(), url: 'http://csharp-app.elastic-stack.svc.cluster.local:5000/chain', completed: false },
+      { name: 'python', id: crypto.randomUUID(), url: 'http://python-app.elastic-stack.svc.cluster.local:5000/chain', completed: false }
     ]
 
     const chainEvent = {

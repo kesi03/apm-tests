@@ -1,0 +1,52 @@
+apiVersion: v1
+kind: Secret
+metadata:
+  name: azure-devops-agent-registry
+  namespace: elastic-stack
+type: kubernetes.io/dockerconfigjson
+data:
+  # Replace with a real registry config before applying this manifest.
+  .dockerconfigjson: e30K
+---
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: azure-devops-agent-kaniko
+  namespace: elastic-stack
+  annotations:
+    argocd.argoproj.io/hook: PreSync
+    argocd.argoproj.io/hook-delete-policy: BeforeHookCreation
+  labels:
+    app: azure-devops-agent
+    app.kubernetes.io/part-of: elastic-stack
+spec:
+  backoffLimit: 0
+  template:
+    metadata:
+      labels:
+        app: azure-devops-agent
+        app.kubernetes.io/part-of: elastic-stack
+    spec:
+      restartPolicy: Never
+      containers:
+        - name: kaniko
+          image: gcr.io/kaniko-project/executor:latest
+          args:
+            - --context=https://github.com/kesi03/apm-tests.git
+            - --dockerfile=devops/azure-devops-agent/Dockerfile
+            - --destination=registry.example.com/mockholm/azure-devops-agent:latest
+            - --build-arg=AZURE_DEVOPS_EXTENSION_PAT=$(AZURE_DEVOPS_EXTENSION_PAT)
+            - --verbosity=info
+          env:
+            - name: AZURE_DEVOPS_EXTENSION_PAT
+              valueFrom:
+                secretKeyRef:
+                  name: azure-devops-agent
+                  key: AZURE_DEVOPS_EXTENSION_PAT
+          volumeMounts:
+            - name: docker-config
+              mountPath: /kaniko/.docker
+      volumes:
+        - name: docker-config
+          secret:
+            secretName: azure-devops-agent-registry

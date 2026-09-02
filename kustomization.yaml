@@ -4,5 +4,4 @@ kind: Kustomization
 resources:
   - namespace.yaml
   - apps/secret.yaml
-  - azure-devops-agent/01-deployment.yaml
-  - azure-devops-agent/02-service.yaml
+  - apps/apm-config.yaml

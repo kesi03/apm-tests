@@ -1,0 +1,50 @@
+apiVersion: argoproj.io/v1alpha1
+kind: AppProject
+metadata:
+  name: devops
+  namespace: argocd
+spec:
+  description: DevOps automation and self-hosted agents
+  sourceRepos:
+    - https://github.com/kesi03/apm-tests.git
+  destinations:
+    - namespace: elastic-stack
+      server: https://kubernetes.default.svc
+  clusterResourceWhitelist:
+    - group: ""
+      kind: Namespace
+  namespaceResourceWhitelist:
+    - group: ""
+      kind: ConfigMap
+    - group: ""
+      kind: Secret
+    - group: ""
+      kind: Service
+    - group: apps
+      kind: Deployment
+    - group: apps
+      kind: StatefulSet
+    - group: ""
+      kind: PersistentVolumeClaim
+---
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: devops-stack
+  namespace: argocd
+spec:
+  project: devops
+  source:
+    repoURL: https://github.com/kesi03/apm-tests.git
+    targetRevision: HEAD
+    path: devops
+    kustomize: {}
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: elastic-stack
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+    syncOptions:
+      - CreateNamespace=true

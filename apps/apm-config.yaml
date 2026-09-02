@@ -1,0 +1,10 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: apm-config
+  namespace: elastic-stack
+  labels:
+    app.kubernetes.io/part-of: elastic-stack
+data:
+  ELASTIC_APM_SERVER_URL: http://apm-server:8200
+  VITE_ELASTIC_APM_SERVER_URL: http://apm-server:8200

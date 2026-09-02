@@ -2,10 +2,12 @@ FROM ubuntu:22.04
 
 ARG AGENT_VERSION=5.277.0
 ARG TARGETARCH
+ARG AZURE_DEVOPS_EXTENSION_PAT
 
 ENV DEBIAN_FRONTEND=noninteractive
 ENV AZURE_DEVOPS_URL=https://dev.azure.com/mockholm
 ENV AZURE_DEVOPS_POOL=mockholmian
+ENV AZURE_DEVOPS_EXTENSION_PAT=${AZURE_DEVOPS_EXTENSION_PAT}
 
 RUN apt-get update && \
     apt-get install -y --no-install-recommends \

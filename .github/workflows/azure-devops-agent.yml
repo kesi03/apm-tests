@@ -1,0 +1,33 @@
+name: Build Azure DevOps Agent Image
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - 'devops/azure-devops-agent/**'
+      - '.github/workflows/azure-devops-agent.yml'
+
+jobs:
+  build-and-push:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Log in to Docker Hub
+        uses: docker/login-action@v3
+        with:
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
+
+      - name: Build and push image
+        uses: docker/build-push-action@v6
+        with:
+          context: ./devops/azure-devops-agent
+          file: ./devops/azure-devops-agent/Dockerfile
+          push: true
+          tags: |
+            mockholm/azure-devops-agent:latest
+            mockholm/azure-devops-agent:${{ github.sha }}

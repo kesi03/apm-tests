@@ -22,7 +22,7 @@ spec:
     spec:
       containers:
         - name: azure-devops-agent
-          image: elastic-apm-demo/azure-devops-agent:latest
+          image: mockholm/azure-devops-agent:latest
           imagePullPolicy: IfNotPresent
           env:
             - name: AZURE_DEVOPS_EXTENSION_PAT

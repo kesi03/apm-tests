@@ -1,0 +1,16 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+namespace: elastic-stack
+
+resources:
+  - ./namespace.yaml
+  - ./apm-config.yaml
+  - ./secret.yaml
+  - ./csharp/k8s.yaml
+  - ./expressjs/k8s.yaml
+  - ./golang/k8s.yaml
+  - ./java/k8s.yaml
+  - ./openliberty/k8s.yaml
+  - ./python/k8s.yaml
+  - ./react/k8s.yaml
+  - ./spring-boot/k8s.yaml

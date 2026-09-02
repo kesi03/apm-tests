@@ -96,7 +96,13 @@ kubectl port-forward -n elastic-stack service/<name>-app <local>:<port>
 
 ## Configuration
 
-All agents are configured with environment variables
-(`ELASTIC_APM_SERVER_URL`, `ELASTIC_APM_SERVICE_NAME`, `ELASTIC_APM_ENVIRONMENT`)
-set in the Dockerfiles and Kubernetes manifests. Override them as needed for
-your cluster.
+The shared APM endpoint is defined once in `apps/apm-config.yaml` and referenced
+by each deployment via `valueFrom.configMapKeyRef`, so
+`ELASTIC_APM_SERVER_URL` stays centralized while each pod still includes the
+runtime environment variable. The default local in-cluster endpoint is
+`http://apm-server:8200`, which keeps the stack working in local Kubernetes
+setups.
+
+App-specific values like `ELASTIC_APM_SERVICE_NAME` and
+`ELASTIC_APM_ENVIRONMENT` remain in each manifest and can still be overridden
+per app.

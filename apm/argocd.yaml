@@ -1,0 +1,52 @@
+apiVersion: argoproj.io/v1alpha1
+kind: AppProject
+metadata:
+  name: apm
+  namespace: argocd
+spec:
+  description: Elastic APM stack
+  sourceRepos:
+    - https://github.com/kesi03/apm-tests.git
+  destinations:
+    - namespace: elastic-stack
+      server: https://kubernetes.default.svc
+  clusterResourceWhitelist:
+    - group: ""
+      kind: Namespace
+  namespaceResourceWhitelist:
+    - group: ""
+      kind: ConfigMap
+    - group: ""
+      kind: Secret
+    - group: ""
+      kind: Service
+    - group: apps
+      kind: Deployment
+    - group: apps
+      kind: StatefulSet
+    - group: batch
+      kind: CronJob
+    - group: opentelemetry.io
+      kind: Instrumentation
+---
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: apm-stack
+  namespace: argocd
+spec:
+  project: apm
+  source:
+    repoURL: https://github.com/kesi03/apm-tests.git
+    targetRevision: HEAD
+    path: apm
+    kustomize: {}
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: elastic-stack
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+    syncOptions:
+      - CreateNamespace=true

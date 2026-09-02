@@ -53,9 +53,7 @@ tasks:
       - kubectl get svc -n {{.NAMESPACE}}
       - echo
       - echo "Elastic Cloud endpoints:"
-      - echo "  APM:           https://my-observability-project-d54a32.apm.europe-west2.gcp.elastic.cloud:443"
-      - echo "  Elasticsearch: https://my-observability-project-d54a32.es.europe-west2.gcp.elastic.cloud:443"
-
+      
   stop:
     desc: Remove the Elastic Stack from the cluster
     cmds:
