@@ -10,13 +10,35 @@ spec:
   backoffLimit: 0
   template:
     spec:
+      initContainers:
+      - name: checkout
+        image: alpine/git:latest
+        env:
+        - name: GITHUB_TOKEN
+          valueFrom:
+            secretKeyRef:
+              name: github-repo-read-token
+              key: token
+        command:
+        - /bin/sh
+        - -c
+        - git -c http.extraHeader="Authorization: Bearer ${GITHUB_TOKEN}" clone --branch main https://github.com/kesi03/apm-tests.git /workspace/source
+        volumeMounts:
+        - name: workspace
+          mountPath: /workspace
       containers:
       - name: kaniko
         image: gcr.io/kaniko-project/executor:latest
         args:
         - "--dockerfile=apps/openliberty/Dockerfile"
-        - "--context=git://github.com/kesi03/apm-tests.git#main"
+        - "--context=dir:///workspace/source"
         - "--destination=registry:32000/openliberty-app:latest"
         - "--insecure-registry=registry:32000"
         - "--skip-tls-verify-registry=registry:32000"
+        volumeMounts:
+        - name: workspace
+          mountPath: /workspace
+      volumes:
+      - name: workspace
+        emptyDir: {}
       restartPolicy: Never
