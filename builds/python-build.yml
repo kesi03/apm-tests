@@ -15,8 +15,8 @@ spec:
         image: gcr.io/kaniko-project/executor:latest
         args:
         - "--dockerfile=apps/python/Dockerfile"
-        - "--context=git://github.com/kesi03/apm-tests.git"
+        - "--context=https://github.com/kesi03/apm-tests.git"
         - "--destination=registry:32000/python-app:latest"
-        - "--insecure"
-        - "--skip-tls-verify"
+        - "--insecure-registry=registry:32000"
+        - "--skip-tls-verify-registry=registry:32000"
       restartPolicy: Never
