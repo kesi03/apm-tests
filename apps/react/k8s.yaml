@@ -40,7 +40,7 @@ spec:
     spec:
       containers:
         - name: app
-          image: elastic-apm-demo/react-app:latest
+          image: registry:32000/react-app:latest
           imagePullPolicy: IfNotPresent
           ports:
             - name: http

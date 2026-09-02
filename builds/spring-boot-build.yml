@@ -1,0 +1,22 @@
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: build-spring-boot
+  namespace: builds
+  annotations:
+    argocd.argoproj.io/hook: Sync
+    argocd.argoproj.io/hook-delete-policy: BeforeHookCreation
+spec:
+  backoffLimit: 0
+  template:
+    spec:
+      containers:
+      - name: kaniko
+        image: gcr.io/kaniko-project/executor:latest
+        args:
+        - "--dockerfile=apps/spring-boot/Dockerfile"
+        - "--context=git://github.com/kesi03/apm-tests.git"
+        - "--destination=registry:32000/spring-boot-app:latest"
+        - "--insecure"
+        - "--skip-tls-verify"
+      restartPolicy: Never

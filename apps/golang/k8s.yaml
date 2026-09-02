@@ -37,7 +37,7 @@ spec:
     spec:
       containers:
         - name: app
-          image: elastic-apm-demo/golang-app:latest
+          image: registry:32000/golang-app:latest
           imagePullPolicy: IfNotPresent
           ports:
             - name: http

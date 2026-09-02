@@ -10,6 +10,8 @@ spec:
   destinations:
     - namespace: elastic-stack
       server: https://kubernetes.default.svc
+    - namespace: builds
+      server: https://kubernetes.default.svc
   clusterResourceWhitelist:
     - group: ""
       kind: Namespace
@@ -24,6 +26,8 @@ spec:
       kind: Deployment
     - group: apps
       kind: StatefulSet
+    - group: batch
+      kind: Job
 ---
 apiVersion: argoproj.io/v1alpha1
 kind: Application
@@ -46,3 +50,25 @@ spec:
       selfHeal: true
     syncOptions:
       - CreateNamespace=true
+---
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+    name: demo-builds
+    namespace: argocd
+spec:
+    project: apps
+    source:
+      repoURL: https://github.com/kesi03/apm-tests.git
+      targetRevision: HEAD
+      path: builds
+      kustomize: {}
+    destination:
+      server: https://kubernetes.default.svc
+      namespace: builds
+    syncPolicy:
+      automated:
+        prune: true
+        selfHeal: true
+      syncOptions:
+        - CreateNamespace=true

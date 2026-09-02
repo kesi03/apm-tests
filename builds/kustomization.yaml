@@ -1,0 +1,13 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+resources:
+  - namespace.yaml
+  - csharp-build.yml
+  - expressjs-build.yml
+  - golang-build.yml
+  - java-build.yml
+  - openliberty-build.yml
+  - python-build.yml
+  - react-build.yml
+  - spring-boot-build.yml

@@ -38,7 +38,7 @@ spec:
     spec:
       containers:
       - name: app
-        image: elastic-apm-demo/csharp-app:latest
+        image: registry:32000/csharp-app:latest
         imagePullPolicy: IfNotPresent
         ports:
         - name: http
