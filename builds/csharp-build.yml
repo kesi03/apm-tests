@@ -28,6 +28,8 @@ spec:
         - "--destination=localhost:32000/csharp-app:latest"
         - "--insecure-registry=localhost:32000"
         - "--skip-tls-verify-registry=localhost:32000"
+        - "--push-retry=5"
+        - "--image-download-retry=5"
         volumeMounts:
         - name: workspace
           mountPath: /workspace

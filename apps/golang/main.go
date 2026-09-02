@@ -9,7 +9,7 @@ import (
 	"time"
 
 	apmhttp "go.elastic.co/apm/module/apmhttp/v2"
-	"go.elastic.co/apm"
+	"go.elastic.co/apm/v2"
 )
 
 func main() {
@@ -55,8 +55,8 @@ func chainHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// create a span within the current transaction
-	span := apm.StartSpan(r.Context(), "golang-chain-step", "custom")
-	if span != nil {
+	span, err := apm.StartSpan(r.Context(), "golang-chain-step", "custom")
+	if err == nil && span != nil {
 		defer span.End()
 	}
 
