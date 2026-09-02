@@ -10,6 +10,7 @@ spec:
   backoffLimit: 0
   template:
     spec:
+      hostNetwork: true
       initContainers:
       - name: checkout
         image: alpine/git:latest
@@ -24,9 +25,9 @@ spec:
         args:
         - "--dockerfile=apps/react/Dockerfile"
         - "--context=dir:///workspace/source"
-        - "--destination=registry.container-registry.svc.cluster.local:32000/react-app:latest"
-        - "--insecure-registry=registry.container-registry.svc.cluster.local:32000"
-        - "--skip-tls-verify-registry=registry.container-registry.svc.cluster.local:32000"
+        - "--destination=localhost:32000/react-app:latest"
+        - "--insecure-registry=localhost:32000"
+        - "--skip-tls-verify-registry=localhost:32000"
         volumeMounts:
         - name: workspace
           mountPath: /workspace

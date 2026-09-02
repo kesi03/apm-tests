@@ -37,7 +37,7 @@ spec:
     spec:
       containers:
         - name: app
-          image: registry.container-registry.svc.cluster.local:32000/golang-app:latest
+          image: localhost:32000/golang-app:latest
           imagePullPolicy: IfNotPresent
           ports:
             - name: http
