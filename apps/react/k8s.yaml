@@ -40,7 +40,7 @@ spec:
     spec:
       containers:
         - name: app
-          image: registry:32000/react-app:latest
+          image: registry.container-registry.svc.cluster.local:32000/react-app:latest
           imagePullPolicy: IfNotPresent
           ports:
             - name: http
