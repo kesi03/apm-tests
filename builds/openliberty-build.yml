@@ -13,16 +13,8 @@ spec:
       initContainers:
       - name: checkout
         image: alpine/git:latest
-        env:
-        - name: GITHUB_TOKEN
-          valueFrom:
-            secretKeyRef:
-              name: github-repo-read-token
-              key: token
-        command:
-        - /bin/sh
-        - -c
-        - git -c http.extraHeader="Authorization: Bearer ${GITHUB_TOKEN}" clone --branch main https://github.com/kesi03/apm-tests.git /workspace/source
+        command: ["/bin/sh", "-c"]
+        args: ["git clone --branch main https://github.com/kesi03/apm-tests.git /workspace/source"]
         volumeMounts:
         - name: workspace
           mountPath: /workspace
