@@ -20,13 +20,11 @@ DOCKERHUB_TOKEN=xxxxxxxxxxxxxxxxxxxxxxxx
 
 The workflow is in `.github/workflows/azure-devops-agent.yml`.
 
-It runs on:
-- manual dispatch (`workflow_dispatch`)
-- pushes to `main` that touch `devops/azure-devops-agent/**`
+It runs manually only (`workflow_dispatch`) and accepts a `version` input.
 
-It builds:
+It builds and pushes:
 - `mockholm/azure-devops-agent:latest`
-- `mockholm/azure-devops-agent:<git-sha>`
+- `mockholm/azure-devops-agent:<version>`
 
 ## Runtime secret for Azure DevOps PAT
 
