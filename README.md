@@ -104,13 +104,11 @@ env:
         key: token
 ```
 
-The React app uses **EDOT Browser** (OpenTelemetry RUM) because the classic
-`@elastic/apm-rum` agent is not available on Elastic Cloud Serverless. It
-exports OTLP over HTTP to the same-origin `/v1/` path, which nginx
-(`apps/react/nginx.conf`) proxies to the project's **Managed OTLP Endpoint**
-(`https://my-observability-project-d54a32.ingest.europe-west2.gcp.elastic.cloud:443`),
-injecting the OTLP API key on the server side. Browser telemetry then appears
-in **APM → Services** (service `react-app`) and **Discover**.
+The React app uses the classic **Elastic APM RUM JavaScript agent**, which is
+supported by the local APM Server. It sends intake events to the same-origin
+`/intake/v2/events` path, which nginx (`apps/react/nginx.conf`) proxies to the
+local APM Server. Browser telemetry then appears in **APM → Services**
+(service `react-app`).
 
 ## Tests
 
