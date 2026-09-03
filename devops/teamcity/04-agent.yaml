@@ -32,6 +32,11 @@ spec:
               value: k8s-teamcity-agent
             - name: DOCKER_HOST
               value: tcp://127.0.0.1:2375
+          volumeMounts:
+            - name: agent-work
+              mountPath: /opt/buildagent/work
+            - name: agent-temp
+              mountPath: /opt/buildagent/temp
           resources:
             requests:
               memory: 512Mi
@@ -65,6 +70,14 @@ spec:
           volumeMounts:
             - name: docker-data
               mountPath: /var/lib/docker
+            - name: agent-work
+              mountPath: /opt/buildagent/work
+            - name: agent-temp
+              mountPath: /opt/buildagent/temp
       volumes:
         - name: docker-data
+          emptyDir: {}
+        - name: agent-work
+          emptyDir: {}
+        - name: agent-temp
           emptyDir: {}
