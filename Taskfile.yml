@@ -155,6 +155,18 @@ tasks:
             --from-literal=AZURE_DEVOPS_EXTENSION_PAT="{{.AZDO_PAT}}" \
             --dry-run=client -o yaml | kubectl apply -f -
 
+  send:agent-pat:
+    desc: Send the Azure DevOps agent PAT to the k8s secret (AZDO_PAT required)
+    vars:
+      AZDO_PAT: '{{.AZDO_PAT | default "$AZDO_PAT"}}'
+    cmds:
+      - cmd: |
+          [ -n "{{.AZDO_PAT}}" ] || { echo "AZDO_PAT is not set (pass AZDO_PAT=... or export it)"; exit 1; }
+          kubectl create secret generic azure-devops-agent \
+            --namespace {{.NAMESPACE}} \
+            --from-literal=AZURE_DEVOPS_EXTENSION_PAT="{{.AZDO_PAT}}" \
+            --dry-run=client -o yaml | kubectl apply -f -
+
   start:heartbeat:
     desc: Deploy the Heartbeat uptime-monitor CronJob for the demo apps (non-react, every 45 min)
     cmds:
