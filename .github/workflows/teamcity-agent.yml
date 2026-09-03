@@ -1,0 +1,79 @@
+name: Manual Publish TeamCity Agent
+
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: "Version to publish (e.g. 1.0.0, patch, minor, major)"
+        required: true
+        default: "patch"
+
+permissions:
+  id-token: write
+  contents: write
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Compute new version
+        id: compute
+        env:
+          INPUT_VERSION: ${{ github.event.inputs.version }}
+        run: |
+          set -e
+          if [[ "${INPUT_VERSION}" == "patch" || "${INPUT_VERSION}" == "minor" || "${INPUT_VERSION}" == "major" ]]; then
+            CURRENT=$(git describe --tags --abbrev=0 2>/dev/null || echo "0.0.0")
+            CURRENT=${CURRENT#v}
+            IFS='.' read -r MAJOR MINOR PATCH <<< "${CURRENT}"
+            case "${INPUT_VERSION}" in
+              patch)
+                PATCH=$((PATCH + 1))
+                ;;
+              minor)
+                MINOR=$((MINOR + 1))
+                PATCH=0
+                ;;
+              major)
+                MAJOR=$((MAJOR + 1))
+                MINOR=0
+                PATCH=0
+                ;;
+            esac
+            NEW_VERSION="${MAJOR}.${MINOR}.${PATCH}"
+          else
+            NEW_VERSION="${INPUT_VERSION}"
+          fi
+          echo "new_version=${NEW_VERSION}" >> "$GITHUB_OUTPUT"
+
+      - name: Create and push git tag
+        run: |
+          git config user.name "github-actions"
+          git config user.email "github-actions@github.com"
+          git tag "v${{ steps.compute.outputs.new_version }}"
+          git push origin "v${{ steps.compute.outputs.new_version }}"
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Login to Docker Hub
+        uses: docker/login-action@v3
+        with:
+          username: mockholm
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
+
+      - name: Build and push Docker image
+        uses: docker/build-push-action@v6
+        with:
+          context: ./devops/teamcity
+          file: ./devops/teamcity/Dockerfile
+          push: true
+          tags: |
+            mockholm/teamcity-agent:latest
+            mockholm/teamcity-agent:${{ steps.compute.outputs.new_version }}

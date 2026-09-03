@@ -2,29 +2,15 @@
 
 set -e
 
-if [ -z "${AZURE_DEVOPS_EXTENSION_PAT}" ]; then
-    echo "AZURE_DEVOPS_EXTENSION_PAT is not set"
+if ! command -v dockerd >/dev/null 2>&1; then
+    echo "Docker daemon is not installed"
     exit 1
 fi
 
-if [ -z "${AZURE_DEVOPS_URL}" ]; then
-    echo "AZURE_DEVOPS_URL is not set"
-    exit 1
-fi
+dockerd --host=unix:///var/run/docker.sock >/var/log/dockerd.log 2>&1 &
 
-if [ -z "${AZURE_DEVOPS_POOL}" ]; then
-    AZURE_DEVOPS_POOL="default"
-fi
+until docker info >/dev/null 2>&1; do
+    sleep 2
+done
 
-./config.sh \
-    --unattended \
-    --url "${AZURE_DEVOPS_URL}" \
-    --auth pat \
-    --token "${AZURE_DEVOPS_EXTENSION_PAT}" \
-    --pool "${AZURE_DEVOPS_POOL}" \
-    --agent "$(hostname)-${AZP_AGENT_SUFFIX}" \
-    --work _work \
-    --replace \
-    --acceptteeeula
-
-./run.sh
+exec su -s /bin/bash azp -c /azp/start-agent.sh

@@ -17,6 +17,7 @@
 #   task start:synthetics-agent  deploy the Private-Location Elastic Agent DaemonSet
 #   task stop:synthetics-agent   remove the Private-Location Elastic Agent DaemonSet
 #   task build:agent AZDO_PAT=...  build the Azure DevOps agent image and store the PAT in the k8s secret
+#   task build:teamcity-agent      build the Docker-enabled TeamCity agent image
 version: '3'
 
 vars:
@@ -154,6 +155,13 @@ tasks:
             --namespace {{.NAMESPACE}} \
             --from-literal=AZURE_DEVOPS_EXTENSION_PAT="{{.AZDO_PAT}}" \
             --dry-run=client -o yaml | kubectl apply -f -
+
+  build:teamcity-agent:
+    desc: Build the Docker-enabled TeamCity agent image
+    vars:
+      TEAMCITY_IMAGE: '{{.TEAMCITY_IMAGE | default "mockholm/teamcity-agent:latest"}}'
+    cmds:
+      - docker build -t {{.TEAMCITY_IMAGE}} devops/teamcity/
 
   send:agent-pat:
     desc: Send the Azure DevOps agent PAT to the k8s secret (AZDO_PAT required)

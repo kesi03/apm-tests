@@ -21,7 +21,7 @@ spec:
     spec:
       containers:
         - name: teamcity-agent
-          image: jetbrains/teamcity-agent:2023.11-linux-sudo
+          image: mockholm/teamcity-agent:latest
           imagePullPolicy: IfNotPresent
           securityContext:
             runAsUser: 0

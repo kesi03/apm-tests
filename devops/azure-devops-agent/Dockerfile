@@ -20,6 +20,7 @@ RUN apt-get update && \
         zip \
         unzip \
         build-essential \
+        docker.io \
         libcurl4 \
         libicu70 \
         libkrb5-3 \
@@ -29,13 +30,15 @@ RUN apt-get update && \
         && rm -rf /var/lib/apt/lists/*
 
 RUN useradd -m -u 1001 -s /bin/bash azp && \
+    usermod -aG docker azp && \
     mkdir -p /azp && \
     chown azp:azp /azp
 
 WORKDIR /azp
 
 COPY start.sh /azp/start.sh
-RUN chmod +x /azp/start.sh
+COPY start-agent.sh /azp/start-agent.sh
+RUN chmod +x /azp/start.sh /azp/start-agent.sh
 
 RUN wget -q -O /tmp/agent.tar.gz \
         "https://download.agent.dev.azure.com/agent/${AGENT_VERSION}/vsts-agent-linux-x64-${AGENT_VERSION}.tar.gz" && \
@@ -43,6 +46,6 @@ RUN wget -q -O /tmp/agent.tar.gz \
     rm /tmp/agent.tar.gz && \
     chown -R azp:azp /azp
 
-USER azp
+USER root
 
-ENTRYPOINT ["./start.sh"]
+ENTRYPOINT ["/azp/start.sh"]

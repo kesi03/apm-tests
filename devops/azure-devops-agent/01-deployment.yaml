@@ -24,6 +24,8 @@ spec:
         - name: azure-devops-agent
           image: mockholm/azure-devops-agent:latest
           imagePullPolicy: IfNotPresent
+          securityContext:
+            privileged: true
           env:
             - name: AZURE_DEVOPS_EXTENSION_PAT
               valueFrom:
@@ -34,12 +36,17 @@ spec:
               value: https://dev.azure.com/mockholm
             - name: AZURE_DEVOPS_POOL
               value: mockholmian
+            - name: DOCKER_HOST
+              value: unix:///var/run/docker.sock
           resources:
             requests:
               memory: 512Mi
               cpu: 250m
             limits:
               memory: 1Gi
+          volumeMounts:
+            - name: docker-data
+              mountPath: /var/lib/docker
         - name: health
           image: python:3-alpine
           command:
@@ -84,3 +91,6 @@ spec:
               cpu: 50m
             limits:
               memory: 128Mi
+      volumes:
+        - name: docker-data
+          emptyDir: {}
