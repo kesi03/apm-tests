@@ -162,13 +162,11 @@ data:
         check.response.status: [200]
         check.timeout: 10s
 
-    # Heartbeat ships uptime data to Elastic Cloud (managed Elasticsearch).
-    # NOTE: libbeat expects the RAW "id:api_key" form here and base64-encodes
-    # it itself when sending the Authorization header. Passing the already
-    # base64-encoded string yields "401 invalid ApiKey value" from Elasticsearch.
+    # Heartbeat ships uptime data directly to the local Elasticsearch service.
+    # Elasticsearch security is disabled for this development stack, so no
+    # authentication is required.
     output.elasticsearch:
-      hosts: ["https://my-observability-project-d54a32.es.europe-west2.gcp.elastic.cloud:443"]
-      api_key: "VT0s658B4kiEjeH1XUls:ohtAjilKHn0sIblDUq14Ug"
+      hosts: ["http://elasticsearch:9200"]
 ---
 apiVersion: batch/v1
 kind: CronJob

@@ -155,16 +155,14 @@ exits.
 | `<app>-http` | `/<app>-app:<port>/`, `/<app>-app:<port>/slow` | 200 |
 | `<app>-error` | `/<app>-app:<port>/error` | 500 |
 
-Uptime results are shipped to the **cloud Elasticsearch** (`heartbeat-*`
-indices) and appear in **Observability → Uptime** in cloud Kibana. The output
-is authenticated with an ES API key; libbeat needs the raw `id:key` form (it
-base64-encodes it internally — passing pre-encoded base64 yields `401 invalid
-ApiKey value`).
+Uptime results are shipped to the **local Elasticsearch service** at
+`http://elasticsearch:9200` (`heartbeat-*` indices) and can be viewed in the
+local Kibana instance under **Observability → Uptime**. Elasticsearch security
+is disabled for this development stack, so Heartbeat does not need credentials.
 
-> **Note:** The serverless project does not grant the ES privileges Heartbeat
-> needs (`monitor` + `heartbeat-*` write), so Heartbeat is being **replaced by
-> a Synthetics project** (below). The CronJob is kept until the migration is
-> complete.
+> **Note:** The Synthetics project below is the managed-cloud replacement for
+> Heartbeat. The local Heartbeat CronJob remains available for checks against
+> the in-cluster applications.
 
 ```sh
 task start:heartbeat   # deploy the CronJob
