@@ -60,7 +60,7 @@ environment are baked in at build time (`VITE_ELASTIC_APM_*` args in
 docker build \
   --build-arg VITE_ELASTIC_APM_SERVICE_NAME=react-app \
   --build-arg VITE_ELASTIC_APM_ENVIRONMENT=production \
-  -t elastic-apm-demo/react-app:latest .
+  -t elastic-apm-demo/react-app:1.0.1 .
 ```
 
 The classic `@elastic/apm-rum` agent is not supported on Elastic Cloud
