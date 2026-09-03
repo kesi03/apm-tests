@@ -228,7 +228,7 @@ Synthetics schedules must be one of `1,2,3,5,10,15,20,30,60,120,240` minutes.
 The demo apps report traces twice: through their original Elastic APM agents
 and through **OpenTelemetry** via the [OpenTelemetry Operator](https://opentelemetry.io/docs/kubernetes/operator/)
 plus an upstream `otel/opentelemetry-collector-contrib`. The collector
-forwards OTLP traces to the **cloud APM Server** with an `ApiKey` header.
+forwards OTLP data to the **local APM Server**.
 
 ```sh
 kubectl apply -f opentelemetry/collector.yaml        # collector + Service
@@ -236,11 +236,10 @@ kubectl apply -f opentelemetry/instrumentation.yaml  # Instrumentation CR (optio
 ```
 
 - `opentelemetry/collector.yaml` runs an OTLP receiver (gRPC `4317`, HTTP
-  `4318`), a batch processor, and an `otlp_grpc/apm` exporter pointing at
-  `my-observability-project-d54a32.apm.europe-west2.gcp.elastic.cloud:443`
-  with `Authorization: ApiKey <apm-key>`.
+  `4318`), a batch processor, and an `otlphttp/apm` exporter pointing at the
+  local `apm-server:8200`.
 - Instrumented apps' OTel agents export to `http://otel-collector:4318`;
-  traces then flow `app -> otel-collector -> cloud APM -> cloud ES` and appear
+  traces then flow `app -> otel-collector -> local APM Server -> local ES` and appear
   in **APM → Services** with `agent.name` `opentelemetry/...`.
 
 The **react-app** (browser RUM) and **golang-app** (no auto-instrumentation

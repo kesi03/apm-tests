@@ -8,9 +8,8 @@ metadata:
     app.kubernetes.io/part-of: elastic-stack
 data:
   config.yaml: |
-    # OpenTelemetry Collector: receives OTLP traces from auto-instrumented
-    # workloads and forwards them to Elastic Cloud's managed APM Server,
-    # which accepts OTLP natively on port 443. Auth is the APM API key.
+    # OpenTelemetry Collector: receives OTLP data from instrumented workloads
+    # and forwards it to the local APM Server.
     receivers:
       otlp:
         protocols:
@@ -23,10 +22,8 @@ data:
       batch: {}
 
     exporters:
-      otlp_grpc/apm:
-        endpoint: my-observability-project-d54a32.apm.europe-west2.gcp.elastic.cloud:443
-        headers:
-          Authorization: ApiKey QkR1dzRwOEI0a2lFamVIMU9LeGI6b1RsV3BuT1NNcEYwWGpYY0dvWGgzUQ==
+      otlphttp/apm:
+        endpoint: http://apm-server:8200
 
     extensions:
       health_check:
@@ -38,7 +35,15 @@ data:
         traces:
           receivers: [otlp]
           processors: [batch]
-          exporters: [otlp_grpc/apm]
+          exporters: [otlphttp/apm]
+        metrics:
+          receivers: [otlp]
+          processors: [batch]
+          exporters: [otlphttp/apm]
+        logs:
+          receivers: [otlp]
+          processors: [batch]
+          exporters: [otlphttp/apm]
 ---
 apiVersion: v1
 kind: Service
