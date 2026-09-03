@@ -179,7 +179,7 @@ export default function App() {
     <ErrorBoundary>
       <main>
         <h1>React + Elastic APM RUM</h1>
-        <h2>Version 1.0.0</h2>
+        <h2>Version 1.0.2</h2>
         <p>This page is instrumented with the Elastic APM RUM agent.</p>
         <StartChain />
         <SendTransaction />

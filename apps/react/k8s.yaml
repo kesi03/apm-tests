@@ -40,7 +40,7 @@ spec:
     spec:
       containers:
         - name: app
-          image: localhost:32000/react-app:1.0.1
+          image: localhost:32000/react-app:1.0.2
           imagePullPolicy: IfNotPresent
           ports:
             - name: http
