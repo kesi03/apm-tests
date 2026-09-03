@@ -30,9 +30,6 @@ spec:
               value: http://teamcity-server:8111
             - name: AGENT_NAME
               value: k8s-teamcity-agent
-          volumeMounts:
-            - name: docker-sock
-              mountPath: /var/run/docker.sock
           resources:
             requests:
               memory: 512Mi
@@ -47,8 +44,3 @@ spec:
                 - /data/teamcity_agent/conf/buildAgent.properties
             initialDelaySeconds: 30
             periodSeconds: 10
-      volumes:
-        - name: docker-sock
-          hostPath:
-            path: /var/run/docker.sock
-            type: Socket

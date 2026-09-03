@@ -27,6 +27,10 @@ spec:
             - name: http
               containerPort: 8111
           env:
+            - name: TEAMCITY_SERVER_OPTS
+              value: "-Dteamcity.server.rootURL=http://teamcity-server:8111"
+            - name: TEAMCITY_DATA_PATH
+              value: /data/teamcity_server/datadir
             - name: TEAMCITY_SERVER_MEM_OPTS
               value: "-Xmx1g -XX:ReservedCodeCacheSize=350m"
           resources:
@@ -38,8 +42,6 @@ spec:
           volumeMounts:
             - name: data
               mountPath: /data/teamcity_server/datadir
-            - name: docker-sock
-              mountPath: /var/run/docker.sock
           startupProbe:
             httpGet:
               path: /login.html
@@ -64,7 +66,3 @@ spec:
         - name: data
           persistentVolumeClaim:
             claimName: teamcity-data
-        - name: docker-sock
-          hostPath:
-            path: /var/run/docker.sock
-            type: Socket
