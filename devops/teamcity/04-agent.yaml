@@ -21,7 +21,7 @@ spec:
     spec:
       containers:
         - name: teamcity-agent
-          image: jetbrains/teamcity-agent:latest
+          image: jetbrains/teamcity-agent:2023.11-linux-sudo
           imagePullPolicy: IfNotPresent
           securityContext:
             runAsUser: 0
@@ -33,6 +33,8 @@ spec:
               value: k8s-teamcity-agent
             - name: DOCKER_IN_DOCKER
               value: start
+            - name: DOCKER_HOST
+              value: ""
           volumeMounts:
             - name: docker-data
               mountPath: /var/lib/docker
