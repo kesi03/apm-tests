@@ -34,9 +34,6 @@ spec:
               value: https://dev.azure.com/mockholm
             - name: AZURE_DEVOPS_POOL
               value: mockholmian
-          volumeMounts:
-            - name: docker-sock
-              mountPath: /var/run/docker.sock
           resources:
             requests:
               memory: 512Mi
