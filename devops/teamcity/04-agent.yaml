@@ -30,6 +30,8 @@ spec:
               value: http://teamcity-server:8111
             - name: AGENT_NAME
               value: k8s-teamcity-agent
+            - name: DOCKER_HOST
+              value: tcp://127.0.0.1:2375
           resources:
             requests:
               memory: 512Mi
@@ -44,3 +46,25 @@ spec:
                 - /data/teamcity_agent/conf/buildAgent.properties
             initialDelaySeconds: 30
             periodSeconds: 10
+        - name: docker-daemon
+          image: docker:27-dind
+          imagePullPolicy: IfNotPresent
+          securityContext:
+            privileged: true
+          env:
+            - name: DOCKER_TLS_CERTDIR
+              value: ""
+          args:
+            - --host=tcp://0.0.0.0:2375
+          resources:
+            requests:
+              memory: 512Mi
+              cpu: 250m
+            limits:
+              memory: 2Gi
+          volumeMounts:
+            - name: docker-data
+              mountPath: /var/lib/docker
+      volumes:
+        - name: docker-data
+          emptyDir: {}
