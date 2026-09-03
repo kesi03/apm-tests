@@ -21,7 +21,7 @@ spec:
     spec:
       containers:
         - name: teamcity-agent
-          image: mockholm/teamcity-agent:latest
+          image: mockholm/teamcity-agent:0.0.4
           imagePullPolicy: IfNotPresent
           securityContext:
             runAsUser: 0
