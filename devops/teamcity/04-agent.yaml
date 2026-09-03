@@ -72,8 +72,10 @@ spec:
               mountPath: /var/lib/docker
             - name: agent-work
               mountPath: /opt/buildagent/work
+              mountPropagation: Bidirectional
             - name: agent-temp
               mountPath: /opt/buildagent/temp
+              mountPropagation: Bidirectional
       volumes:
         - name: docker-data
           emptyDir: {}
